@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SQL to ER Diagram
 
-## Getting Started
+Transforme scripts SQL em diagramas entidade-relacionamento (ER) de forma automática, visual e intuitiva.  
+Automatically transform SQL scripts into intuitive and visual entity-relationship (ER) diagrams.
 
-First, run the development server:
+![Preview](public/preview.png) <!-- Adicione um screenshot se desejar -->
+
+---
+
+## 🚀 Features | Funcionalidades
+
+- Suporte a PostgreSQL, MySQL e SQL Server  
+  Support for PostgreSQL, MySQL, and SQL Server
+- Detecção automática de tabelas, chaves primárias e estrangeiras  
+  Automatic detection of tables, primary and foreign keys
+- Visualização clara e responsiva do diagrama  
+  Clear and responsive diagram visualization
+- Exportação em PNG, SVG e PDF (em breve)  
+  Export to PNG, SVG, and PDF (coming soon)
+
+---
+
+## 🖥️ Como usar | How to use
+
+### 1. Instale as dependências | Install dependencies
+
+```bash
+npm install
+# ou | or
+yarn install
+```
+
+### 2. Rode o servidor de desenvolvimento | Run the development server
 
 ```bash
 npm run dev
-# or
+# ou | or
 yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse [http://localhost:3000](http://localhost:3000) no seu navegador.  
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ✨ Exemplo de uso | Usage Example
 
-## Learn More
+Cole seu script SQL na área indicada e clique em "Gerar Diagrama".  
+Paste your SQL script and click "Generate Diagram".
 
-To learn more about Next.js, take a look at the following resources:
+```sql
+CREATE TABLE users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(100) UNIQUE
+);
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  content TEXT,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## 🛠️ Tecnologias | Technologies
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- [Next.js](https://nextjs.org/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Tailwind CSS](https://tailwindcss.com/)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 📄 Licença | License
+
+MIT
