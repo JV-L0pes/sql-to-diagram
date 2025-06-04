@@ -305,11 +305,7 @@ const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => vo
                 <Controls 
                   className={`${styles.reactFlowControls} bg-slate-800 border border-slate-600`}
                 />
-                <MiniMap 
-                  className={`${styles.reactFlowMinimap} bg-slate-800 border border-slate-600`}
-                  nodeColor="#3730a3"
-                  maskColor="rgba(15, 23, 42, 0.8)"
-                />
+                {/* MiniMap removido da versão normal */}
                 <Background 
                   color="#475569" 
                   gap={20} 

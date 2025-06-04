@@ -1,4 +1,4 @@
-// src/types/Table.ts
+// src/types/Table.ts - Enhanced with complete relationship support
 export interface Column {
   name: string;
   type: string;
@@ -25,6 +25,7 @@ export interface Relationship {
     column: string;
   };
   type: 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY';
+  junctionTable?: string; // For MANY_TO_MANY relationships
 }
 
 export interface DatabaseSchema {
