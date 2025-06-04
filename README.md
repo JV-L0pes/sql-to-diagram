@@ -76,4 +76,5 @@ CREATE TABLE posts (
 
 ## 📄 Licença | License
 
-MIT
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.  
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
