@@ -1,7 +1,7 @@
-// src/components/ERDiagram.tsx
 'use client'
 
-import { useCallback, useMemo, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useCallback, useMemo, useRef, useImperativeHandle, forwardRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import ReactFlow, {
   Node,
   Edge,
@@ -20,13 +20,12 @@ import styles from './ERDiagram.module.css'
 import { Database, Key } from 'lucide-react'
 import { DatabaseSchema, Table as TableType } from '../types/Table'
 
-// Componente customizado para nós de tabela
-function TableNode({ data }: { data: { table: TableType } }) {
+// Memoized TableNode component
+const TableNode = ({ data }: { data: { table: TableType } }) => {
   const { table } = data
 
   return (
     <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-lg min-w-[250px]">
-      {/* Header da tabela */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-2 rounded-t-lg">
         <div className="flex items-center text-white font-bold">
           <Database className="w-4 h-4 mr-2" />
@@ -34,7 +33,6 @@ function TableNode({ data }: { data: { table: TableType } }) {
         </div>
       </div>
       
-      {/* Colunas */}
       <div className="p-3 space-y-1">
         {table.columns.map((column, index) => (
           <div key={index} className="flex items-center justify-between text-sm py-1">
@@ -65,7 +63,6 @@ function TableNode({ data }: { data: { table: TableType } }) {
         ))}
       </div>
 
-      {/* Handles para conexões */}
       <Handle
         type="target"
         position={Position.Left}
@@ -80,7 +77,7 @@ function TableNode({ data }: { data: { table: TableType } }) {
   )
 }
 
-// Tipos de nós customizados
+// Memoized nodeTypes outside component
 const nodeTypes = {
   tableNode: TableNode,
 }
@@ -94,302 +91,40 @@ interface ERDiagramProps {
 const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => void }, ERDiagramProps>(
   ({ schema, onFullscreen, onDownloadPNG }, ref) => {
     const reactFlowRef = useRef<HTMLDivElement>(null)
+    const [isFullscreen, setIsFullscreen] = useState(false)
 
     const openFullscreen = useCallback(() => {
-      // Criar HTML do diagrama ER para nova aba
-      const diagramHTML = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <title>ER Diagram - Fullscreen</title>
-            <meta charset="utf-8">
-            <style>
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body { 
-                background: #0f172a; 
-                font-family: system-ui, -apple-system, sans-serif;
-                overflow-x: auto;
-                padding: 20px;
-              }
-              .diagram-container {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 30px;
-                justify-content: center;
-                align-items: flex-start;
-                min-height: calc(100vh - 40px);
-                padding: 20px;
-              }
-              .table {
-                background: #1e293b;
-                border: 1px solid #475569;
-                border-radius: 12px;
-                min-width: 280px;
-                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
-                transition: transform 0.2s ease;
-              }
-              .table:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
-              }
-              .table-header {
-                background: linear-gradient(135deg, #3b82f6, #8b5cf6);
-                color: white;
-                padding: 16px 20px;
-                font-weight: bold;
-                font-size: 16px;
-                border-radius: 12px 12px 0 0;
-                display: flex;
-                align-items: center;
-              }
-              .table-icon {
-                margin-right: 10px;
-                font-size: 18px;
-              }
-              .table-body {
-                padding: 16px 20px;
-              }
-              .column {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 8px 0;
-                color: #e2e8f0;
-                font-size: 14px;
-                border-bottom: 1px solid #334155;
-              }
-              .column:last-child {
-                border-bottom: none;
-              }
-              .column-info {
-                display: flex;
-                align-items: center;
-                flex: 1;
-              }
-              .key-icon {
-                color: #fbbf24;
-                margin-right: 8px;
-                font-size: 14px;
-              }
-              .column-name {
-                font-weight: 500;
-              }
-              .column-name.pk {
-                color: #fbbf24;
-                font-weight: bold;
-              }
-              .column-type {
-                color: #94a3b8;
-                margin-left: 12px;
-                font-size: 12px;
-                font-style: italic;
-              }
-              .tags {
-                display: flex;
-                gap: 4px;
-                margin-left: 8px;
-              }
-              .tag {
-                padding: 3px 6px;
-                border-radius: 4px;
-                font-size: 10px;
-                font-weight: bold;
-                text-transform: uppercase;
-              }
-              .tag-pk { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
-              .tag-fk { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
-              .tag-nn { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
-              .relationships {
-                position: fixed;
-                bottom: 20px;
-                right: 20px;
-                background: rgba(30, 41, 59, 0.95);
-                border: 1px solid #475569;
-                border-radius: 12px;
-                padding: 16px;
-                max-width: 400px;
-                max-height: 300px;
-                overflow-y: auto;
-                backdrop-filter: blur(10px);
-              }
-              .relationships h3 {
-                color: #e2e8f0;
-                margin-bottom: 12px;
-                font-size: 14px;
-                display: flex;
-                align-items: center;
-              }
-              .relationship {
-                color: #e2e8f0;
-                padding: 4px 0;
-                font-size: 12px;
-                border-bottom: 1px solid #334155;
-              }
-              .relationship:last-child {
-                border-bottom: none;
-              }
-              .rel-from { color: #3b82f6; font-weight: 500; }
-              .rel-to { color: #8b5cf6; font-weight: 500; }
-              .rel-arrow { color: #64748b; margin: 0 6px; }
-              .title {
-                position: fixed;
-                top: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: rgba(30, 41, 59, 0.95);
-                color: #e2e8f0;
-                padding: 12px 24px;
-                border-radius: 12px;
-                font-size: 18px;
-                font-weight: bold;
-                backdrop-filter: blur(10px);
-                border: 1px solid #475569;
-                z-index: 1000;
-              }
-              .instructions {
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: rgba(30, 41, 59, 0.95);
-                color: #94a3b8;
-                padding: 10px;
-                border-radius: 8px;
-                font-size: 12px;
-                border: 1px solid #475569;
-                backdrop-filter: blur(10px);
-              }
-            </style>
-          </head>
-          <body>
-            <div class="title">📊 Diagrama ER</div>
-            <div class="instructions">
-              F11 para tela cheia total<br>
-              ESC para sair
-            </div>
-            
-            <div class="diagram-container">
-              ${schema.tables.map(table => `
-                <div class="table">
-                  <div class="table-header">
-                    <span class="table-icon">🗃️</span>
-                    ${table.name}
-                  </div>
-                  <div class="table-body">
-                    ${table.columns.map(column => `
-                      <div class="column">
-                        <div class="column-info">
-                          ${column.primaryKey ? '<span class="key-icon">🔑</span>' : '<span style="width: 22px; display: inline-block;"></span>'}
-                          <span class="column-name ${column.primaryKey ? 'pk' : ''}">${column.name}</span>
-                          <span class="column-type">${column.type}</span>
-                        </div>
-                        <div class="tags">
-                          ${column.primaryKey ? '<span class="tag tag-pk">PK</span>' : ''}
-                          ${column.foreignKey ? '<span class="tag tag-fk">FK</span>' : ''}
-                          ${!column.nullable ? '<span class="tag tag-nn">NOT NULL</span>' : ''}
-                        </div>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
-              `).join('')}
-            </div>
-            
-            ${schema.relationships.length > 0 ? `
-              <div class="relationships">
-                <h3>🔗 Relacionamentos (${schema.relationships.length})</h3>
-                ${schema.relationships.map(rel => `
-                  <div class="relationship">
-                    <span class="rel-from">${rel.from.table}.${rel.from.column}</span>
-                    <span class="rel-arrow">→</span>
-                    <span class="rel-to">${rel.to.table}.${rel.to.column}</span>
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
-            
-            <script>
-              // Auto F11 para fullscreen
-              document.addEventListener('keydown', function(e) {
-                if (e.key === 'F11') {
-                  e.preventDefault();
-                  if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen();
-                  } else {
-                    document.exitFullscreen();
-                  }
-                }
-              });
-            </script>
-          </body>
-        </html>
-      `
-      
-      const newWindow = window.open('', '_blank', 'width=1400,height=900')
-      if (newWindow) {
-        newWindow.document.write(diagramHTML)
-        newWindow.document.close()
-        newWindow.focus()
-        
-        // Tentar abrir em fullscreen automaticamente após um delay
-        setTimeout(() => {
-          if (newWindow.document.documentElement.requestFullscreen) {
-            newWindow.document.documentElement.requestFullscreen().catch(() => {
-              console.log('Fullscreen automático bloqueado, use F11')
-            })
-          }
-        }, 1000)
-      } else {
-        alert('❌ Bloqueador de pop-up ativo. Permita pop-ups para esta página.')
-      }
+      setIsFullscreen(true)
+      onFullscreen?.()
+    }, [onFullscreen])
 
-      if (onFullscreen) {
-        onFullscreen()
-      }
-    }, [onFullscreen, schema])
+    const closeFullscreen = useCallback(() => {
+      setIsFullscreen(false)
+    }, [])
 
     const downloadPNG = useCallback(async () => {
       if (!reactFlowRef.current) return
 
       try {
-        // Usar Screen Capture API simplificada
-        if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-          const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true
-          })
-          
-          const video = document.createElement('video')
-          video.srcObject = stream
-          video.play()
-          
-          video.onloadedmetadata = () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = video.videoWidth
-            canvas.height = video.videoHeight
-            
-            const ctx = canvas.getContext('2d')
-            if (ctx) {
-              ctx.drawImage(video, 0, 0)
-              
-              // Parar gravação
-              stream.getTracks().forEach(track => track.stop())
-              
-              // Download
-              const link = document.createElement('a')
-              link.download = `er-diagram-${new Date().getTime()}.png`
-              link.href = canvas.toDataURL('image/png')
-              link.click()
-            }
+        const { toPng } = await import('html-to-image')
+        const dataUrl = await toPng(reactFlowRef.current, {
+          backgroundColor: '#0f172a',
+          width: reactFlowRef.current.offsetWidth,
+          height: reactFlowRef.current.offsetHeight,
+          style: {
+            transform: 'scale(1)',
+            transformOrigin: 'top left',
           }
-        } else {
-          throw new Error('API não suportada')
-        }
+        })
 
-        if (onDownloadPNG) {
-          onDownloadPNG()
-        }
+        const link = document.createElement('a')
+        link.download = `er-diagram-${new Date().getTime()}.png`
+        link.href = dataUrl
+        link.click()
+
+        onDownloadPNG?.()
       } catch (error) {
-        console.error('Erro ao capturar:', error)
-        alert('📸 Para capturar PNG:\n\n1. Clique em "Compartilhar tela"\n2. Selecione esta aba do navegador\n3. A imagem será salva automaticamente\n\nOu use Print Screen manualmente!')
+        console.error('PNG export failed:', error)
       }
     }, [onDownloadPNG])
 
@@ -398,10 +133,23 @@ const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => vo
       downloadPNG,
     }))
 
-    // Gerar posições automáticas para as tabelas
+    // Handle ESC key to close fullscreen
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && isFullscreen) {
+          closeFullscreen()
+        }
+      }
+
+      if (isFullscreen) {
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+      }
+    }, [isFullscreen, closeFullscreen])
+
+    // Memoized layout generation
     const generateAutoLayout = useCallback((tables: TableType[]) => {
       const positions: { [key: string]: { x: number; y: number } } = {}
-      
       const spacing = 350
       const cols = Math.ceil(Math.sqrt(tables.length))
       
@@ -417,7 +165,7 @@ const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => vo
       return positions
     }, [])
 
-    // Converter schema para nós do React Flow
+    // Memoized initial nodes
     const initialNodes: Node[] = useMemo(() => {
       const positions = generateAutoLayout(schema.tables)
       
@@ -430,7 +178,7 @@ const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => vo
       }))
     }, [schema.tables, generateAutoLayout])
 
-    // Converter relacionamentos para edges
+    // Memoized initial edges
     const initialEdges: Edge[] = useMemo(() => {
       return schema.relationships.map((rel, index) => ({
         id: `${rel.from.table}-${rel.from.column}-${rel.to.table}-${rel.to.column}-${index}`,
@@ -475,35 +223,103 @@ const ERDiagram = forwardRef<{ openFullscreen: () => void; downloadPNG: () => vo
     }
 
     return (
-      <div className="h-full w-full bg-slate-900 rounded-xl overflow-hidden">
-        <div ref={reactFlowRef} className="h-full w-full">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            nodeTypes={nodeTypes}
-            fitView
-            attributionPosition="bottom-left"
-            className="bg-slate-900"
-          >
-            <Controls 
-              className={`${styles.reactFlowControls} bg-slate-800 border border-slate-600`}
-            />
-            <MiniMap 
-              className={`${styles.reactFlowMinimap} bg-slate-800 border border-slate-600`}
-              nodeColor="#3730a3"
-              maskColor="rgba(15, 23, 42, 0.8)"
-            />
-            <Background 
-              color="#475569" 
-              gap={20} 
-              size={1}
-            />
-          </ReactFlow>
-        </div>
-      </div>
+      <>
+        {/* Modal Fullscreen Overlay via Portal */}
+        {isFullscreen && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-slate-900">
+            {/* Fullscreen Controls */}
+            <div className="absolute top-4 right-4 z-50 flex gap-2">
+              <button
+                onClick={downloadPNG}
+                className="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors flex items-center gap-2"
+              >
+                📥 Download PNG
+              </button>
+              <button
+                onClick={closeFullscreen}
+                className="bg-slate-800 border border-slate-600 text-slate-200 px-3 py-2 rounded-lg text-sm hover:bg-slate-700 transition-colors flex items-center gap-2"
+              >
+                ❌ Fechar Fullscreen
+              </button>
+            </div>
+
+            {/* Info Panel for Fullscreen */}
+            <div className="absolute top-4 left-4 z-50 bg-slate-800 border border-slate-600 text-slate-200 p-3 rounded-lg text-sm max-w-xs">
+              <div className="font-bold mb-2">📊 Diagrama ER - Fullscreen</div>
+              <div>🖱️ Arrastar: Move tabelas</div>
+              <div>🔍 Scroll: Zoom in/out</div>
+              <div>⚡ Espaço: Centralizar</div>
+              <div>⌨️ ESC: Sair do fullscreen</div>
+              <div className="mt-2 text-slate-400">
+                {schema.tables.length} tabelas • {schema.relationships.length} relacionamentos
+              </div>
+            </div>
+
+            {/* Fullscreen Diagram - MESMA INSTÂNCIA */}
+            <div ref={isFullscreen ? reactFlowRef : undefined} className="h-full w-full">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+                attributionPosition="bottom-left"
+                className="bg-slate-900"
+              >
+                <Controls 
+                  className={`${styles.reactFlowControls} bg-slate-800 border border-slate-600`}
+                />
+                <MiniMap 
+                  className={`${styles.reactFlowMinimap} bg-slate-800 border border-slate-600`}
+                  nodeColor="#3730a3"
+                  maskColor="rgba(15, 23, 42, 0.8)"
+                />
+                <Background 
+                  color="#475569" 
+                  gap={20} 
+                  size={1}
+                />
+              </ReactFlow>
+            </div>
+          </div>,
+          document.body
+        )}
+
+        {/* Normal Diagram - MESMA INSTÂNCIA */}
+        {!isFullscreen && (
+          <div className="h-full w-full bg-slate-900 rounded-xl overflow-hidden">
+            <div ref={reactFlowRef} className="h-full w-full">
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                nodeTypes={nodeTypes}
+                fitView
+                attributionPosition="bottom-left"
+                className="bg-slate-900"
+              >
+                <Controls 
+                  className={`${styles.reactFlowControls} bg-slate-800 border border-slate-600`}
+                />
+                <MiniMap 
+                  className={`${styles.reactFlowMinimap} bg-slate-800 border border-slate-600`}
+                  nodeColor="#3730a3"
+                  maskColor="rgba(15, 23, 42, 0.8)"
+                />
+                <Background 
+                  color="#475569" 
+                  gap={20} 
+                  size={1}
+                />
+              </ReactFlow>
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 )

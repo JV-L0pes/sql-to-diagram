@@ -1,9 +1,9 @@
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 # SQL to ER Diagram
 
 Transforme scripts SQL em diagramas entidade-relacionamento (ER) de forma automática, visual e intuitiva.  
 Automatically transform SQL scripts into intuitive and visual entity-relationship (ER) diagrams.
-
-![Preview](public/preview.png) <!-- Adicione um screenshot se desejar -->
 
 ---
 
@@ -76,4 +76,5 @@ CREATE TABLE posts (
 
 ## 📄 Licença | License
 
-MIT
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.  
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

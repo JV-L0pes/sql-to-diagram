@@ -309,7 +309,7 @@ CREATE TABLE posts (
             Feito com Next.js, TypeScript e Tailwind CSS
           </p>
         </div>
-      </div>
+      </div>  
     </div>
   )
 }
