@@ -1,0 +1,35 @@
+/* src/components/ERDiagram.module.css */
+
+/* Estilizar controles do React Flow */
+.reactFlowControls {
+    background: #1e293b !important;
+    border: 1px solid #475569 !important;
+    border-radius: 8px !important;
+  }
+  
+  .reactFlowControls button {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #475569 !important;
+    border-radius: 4px !important;
+  }
+  
+  .reactFlowControls button:hover {
+    background: #334155 !important;
+    color: #f1f5f9 !important;
+  }
+  
+  /* Estilizar minimap */
+  .reactFlowMinimap {
+    background: #1e293b !important;
+    border: 1px solid #475569 !important;
+    border-radius: 8px !important;
+  }
+  
+  /* Estilizar attribution */
+  :global(.react-flow__attribution) {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #94a3b8 !important;
+    font-size: 10px !important;
+    border-radius: 4px !important;
+  }
