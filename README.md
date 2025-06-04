@@ -3,8 +3,6 @@
 Transforme scripts SQL em diagramas entidade-relacionamento (ER) de forma automática, visual e intuitiva.  
 Automatically transform SQL scripts into intuitive and visual entity-relationship (ER) diagrams.
 
-![Preview](public/preview.png) <!-- Adicione um screenshot se desejar -->
-
 ---
 
 ## 🚀 Features | Funcionalidades
