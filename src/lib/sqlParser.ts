@@ -1,29 +1,41 @@
-// src/lib/sqlParser.ts - Enhanced Version
+// src/lib/sqlParser.ts
 import { Table, Column, Relationship, DatabaseSchema } from '@/types/Table'
 
+interface ParsedConstraint {
+  type: 'PRIMARY_KEY' | 'FOREIGN_KEY' | 'UNIQUE' | 'CHECK'
+  columns: string[]
+  referencedTable?: string
+  referencedColumns?: string[]
+  name?: string
+}
+
+interface TableMetadata {
+  table: Table
+  constraints: ParsedConstraint[]
+  indexes: string[][]
+}
+
 export class SQLParser {
-  private tables: Map<string, Table> = new Map()
+  private tables: Map<string, TableMetadata> = new Map()
   private relationships: Relationship[] = []
-  private primaryKeys: Map<string, string[]> = new Map()
-  private foreignKeys: Map<string, { column: string; refTable: string; refColumn: string }[]> = new Map()
-  private uniqueConstraints: Map<string, string[]> = new Map()
+  private junctionTables: Set<string> = new Set()
 
   parseSQLScript(sqlScript: string): DatabaseSchema {
     this.tables.clear()
     this.relationships = []
-    this.primaryKeys.clear()
-    this.foreignKeys.clear()
-    this.uniqueConstraints.clear()
+    this.junctionTables.clear()
 
     try {
       this.parseSQL(sqlScript)
-      this.analyzeRelationships()
+      this.identifyJunctionTables()
+      this.detectAllRelationships()
+      this.optimizeRelationships()
     } catch (error) {
       console.error('SQL parsing failed:', error)
     }
 
     return {
-      tables: Array.from(this.tables.values()),
+      tables: Array.from(this.tables.values()).map(meta => meta.table),
       relationships: this.relationships
     }
   }
@@ -32,120 +44,145 @@ export class SQLParser {
     const statements = this.splitStatements(sqlScript)
     
     for (const statement of statements) {
-      this.processStatement(statement.trim())
+      const trimmed = statement.trim()
+      const upperStatement = trimmed.toUpperCase()
+      
+      if (upperStatement.startsWith('CREATE TABLE')) {
+        this.parseCreateTable(trimmed)
+      } else if (upperStatement.startsWith('ALTER TABLE')) {
+        this.parseAlterTable(trimmed)
+      } else if (upperStatement.startsWith('CREATE INDEX') || upperStatement.startsWith('CREATE UNIQUE INDEX')) {
+        this.parseCreateIndex(trimmed)
+      }
     }
   }
 
   private splitStatements(sql: string): string[] {
-    // Remove comentários
     sql = sql.replace(/--.*$/gm, '')
     sql = sql.replace(/\/\*[\s\S]*?\*\//g, '')
     
-    return sql.split(';').filter(stmt => stmt.trim().length > 0)
-  }
-
-  private processStatement(statement: string): void {
-    const upperStatement = statement.toUpperCase()
+    const statements: string[] = []
+    let current = ''
+    let inQuotes = false
+    let quoteChar = ''
     
-    if (upperStatement.startsWith('CREATE TABLE')) {
-      this.parseCreateTable(statement)
+    for (let i = 0; i < sql.length; i++) {
+      const char = sql[i]
+      
+      if (!inQuotes && (char === '"' || char === "'" || char === '`')) {
+        inQuotes = true
+        quoteChar = char
+      } else if (inQuotes && char === quoteChar) {
+        inQuotes = false
+        quoteChar = ''
+      } else if (!inQuotes && char === ';') {
+        if (current.trim()) {
+          statements.push(current.trim())
+        }
+        current = ''
+        continue
+      }
+      
+      current += char
     }
+    
+    if (current.trim()) {
+      statements.push(current.trim())
+    }
+    
+    return statements
   }
 
   private parseCreateTable(statement: string): void {
     const tableNameMatch = statement.match(/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)/i)
     if (!tableNameMatch) return
 
-    const tableName = tableNameMatch[1].toLowerCase()
+    const tableName = tableNameMatch[1]
     const contentMatch = statement.match(/\(([\s\S]*)\)/)
     if (!contentMatch) return
 
     const content = contentMatch[1]
-    const columnDefinitions = this.splitColumnDefinitions(content)
+    const definitions = this.splitTableDefinitions(content)
     
     const columns: Column[] = []
-    const tablePrimaryKeys: string[] = []
-    const tableForeignKeys: { column: string; refTable: string; refColumn: string }[] = []
-    const tableUniqueConstraints: string[] = []
+    const constraints: ParsedConstraint[] = []
     
-    for (const definition of columnDefinitions) {
+    for (const definition of definitions) {
       const trimmed = definition.trim()
+      const upperDef = trimmed.toUpperCase()
       
-      if (trimmed.toUpperCase().startsWith('PRIMARY KEY')) {
-        const pkMatch = trimmed.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i)
-        if (pkMatch) {
-          const pkColumns = pkMatch[1].split(',').map(col => col.trim().replace(/["`]/g, '').toLowerCase())
-          tablePrimaryKeys.push(...pkColumns)
-        }
-      } else if (trimmed.toUpperCase().startsWith('FOREIGN KEY')) {
-        this.parseForeignKeyConstraint(trimmed, tableForeignKeys)
-      } else if (trimmed.toUpperCase().startsWith('UNIQUE')) {
-        this.parseUniqueConstraint(trimmed, tableUniqueConstraints)
-      } else if (trimmed.length > 0 && !trimmed.toUpperCase().startsWith('CONSTRAINT')) {
+      if (upperDef.startsWith('PRIMARY KEY')) {
+        constraints.push(this.parsePrimaryKeyConstraint(trimmed))
+      } else if (upperDef.startsWith('FOREIGN KEY')) {
+        constraints.push(this.parseForeignKeyConstraint(trimmed))
+      } else if (upperDef.startsWith('UNIQUE')) {
+        constraints.push(this.parseUniqueConstraint(trimmed))
+      } else if (upperDef.startsWith('CHECK')) {
+        constraints.push(this.parseCheckConstraint(trimmed))
+      } else if (upperDef.startsWith('CONSTRAINT')) {
+        const constraint = this.parseNamedConstraint(trimmed)
+        if (constraint) constraints.push(constraint)
+      } else if (trimmed.length > 0) {
         const column = this.parseColumnDefinition(trimmed)
-        if (column) {
-          columns.push(column)
-          
-          // Check for inline constraints
-          if (column.primaryKey) {
-            tablePrimaryKeys.push(column.name)
-          }
-          if (column.foreignKey) {
-            tableForeignKeys.push({
-              column: column.name,
-              refTable: column.foreignKey.table,
-              refColumn: column.foreignKey.column
-            })
-          }
-          if (this.hasUniqueConstraint(trimmed)) {
-            tableUniqueConstraints.push(column.name)
-          }
-        }
+        if (column) columns.push(column)
       }
     }
 
-    // Store metadata
-    this.primaryKeys.set(tableName, tablePrimaryKeys)
-    this.foreignKeys.set(tableName, tableForeignKeys)
-    this.uniqueConstraints.set(tableName, tableUniqueConstraints)
+    // Apply primary key constraints
+    const pkConstraint = constraints.find(c => c.type === 'PRIMARY_KEY')
+    if (pkConstraint) {
+      pkConstraint.columns.forEach(colName => {
+        const column = columns.find(c => c.name === colName)
+        if (column) column.primaryKey = true
+      })
+    }
 
-    // Mark primary keys in columns
-    columns.forEach(column => {
-      if (tablePrimaryKeys.includes(column.name.toLowerCase())) {
-        column.primaryKey = true
-      }
-    })
-
-    // Mark foreign keys in columns
-    tableForeignKeys.forEach(fk => {
-      const column = columns.find(col => col.name.toLowerCase() === fk.column.toLowerCase())
-      if (column) {
-        column.foreignKey = {
-          table: fk.refTable,
-          column: fk.refColumn
+    // Apply foreign key relationships to columns
+    constraints.filter(c => c.type === 'FOREIGN_KEY').forEach(fkConstraint => {
+      fkConstraint.columns.forEach(colName => {
+        const column = columns.find(c => c.name === colName)
+        if (column && fkConstraint.referencedTable && fkConstraint.referencedColumns) {
+          column.foreignKey = {
+            table: fkConstraint.referencedTable,
+            column: fkConstraint.referencedColumns[0]
+          }
         }
-      }
+      })
     })
 
-    this.tables.set(tableName, { name: tableName, columns })
+    this.tables.set(tableName, {
+      table: { name: tableName, columns },
+      constraints,
+      indexes: []
+    })
   }
 
-  private splitColumnDefinitions(content: string): string[] {
+  private splitTableDefinitions(content: string): string[] {
     const definitions: string[] = []
     let current = ''
     let parenDepth = 0
+    let inQuotes = false
+    let quoteChar = ''
     
     for (let i = 0; i < content.length; i++) {
       const char = content[i]
       
-      if (char === '(') {
-        parenDepth++
-      } else if (char === ')') {
-        parenDepth--
-      } else if (char === ',' && parenDepth === 0) {
-        definitions.push(current.trim())
-        current = ''
-        continue
+      if (!inQuotes && (char === '"' || char === "'" || char === '`')) {
+        inQuotes = true
+        quoteChar = char
+      } else if (inQuotes && char === quoteChar) {
+        inQuotes = false
+        quoteChar = ''
+      } else if (!inQuotes) {
+        if (char === '(') {
+          parenDepth++
+        } else if (char === ')') {
+          parenDepth--
+        } else if (char === ',' && parenDepth === 0) {
+          definitions.push(current.trim())
+          current = ''
+          continue
+        }
       }
       
       current += char
@@ -162,7 +199,7 @@ export class SQLParser {
     const parts = definition.trim().split(/\s+/)
     if (parts.length < 2) return null
 
-    const name = parts[0].replace(/["`]/g, '').toLowerCase()
+    const name = parts[0].replace(/["`]/g, '')
     const type = parts[1]
     const upperDef = definition.toUpperCase()
     
@@ -174,158 +211,257 @@ export class SQLParser {
     }
   }
 
-  private parseForeignKeyConstraint(definition: string, foreignKeys: { column: string; refTable: string; refColumn: string }[]): void {
-    const fkMatch = definition.match(/FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(\w+)\s*\(([^)]+)\)/i)
+  private parsePrimaryKeyConstraint(definition: string): ParsedConstraint {
+    const match = definition.match(/PRIMARY\s+KEY\s*\(([^)]+)\)/i)
+    const columns = match ? match[1].split(',').map(col => col.trim().replace(/["`]/g, '')) : []
     
-    if (fkMatch) {
-      const sourceColumns = fkMatch[1].split(',').map(col => col.trim().replace(/["`]/g, '').toLowerCase())
-      const targetTable = fkMatch[2].trim().toLowerCase()
-      const targetColumns = fkMatch[3].split(',').map(col => col.trim().replace(/["`]/g, '').toLowerCase())
+    return {
+      type: 'PRIMARY_KEY',
+      columns
+    }
+  }
+
+  private parseForeignKeyConstraint(definition: string): ParsedConstraint {
+    const match = definition.match(/FOREIGN\s+KEY\s*\(([^)]+)\)\s+REFERENCES\s+(\w+)\s*\(([^)]+)\)/i)
+    
+    if (match) {
+      const columns = match[1].split(',').map(col => col.trim().replace(/["`]/g, ''))
+      const referencedTable = match[2].trim()
+      const referencedColumns = match[3].split(',').map(col => col.trim().replace(/["`]/g, ''))
       
-      // Handle multi-column foreign keys
-      sourceColumns.forEach((sourceCol, index) => {
-        const targetCol = targetColumns[index] || targetColumns[0]
-        foreignKeys.push({
-          column: sourceCol,
-          refTable: targetTable,
-          refColumn: targetCol
-        })
-      })
+      return {
+        type: 'FOREIGN_KEY',
+        columns,
+        referencedTable,
+        referencedColumns
+      }
     }
-  }
-
-  private parseUniqueConstraint(definition: string, uniqueConstraints: string[]): void {
-    const uniqueMatch = definition.match(/UNIQUE\s*\(([^)]+)\)/i)
-    if (uniqueMatch) {
-      const columns = uniqueMatch[1].split(',').map(col => col.trim().replace(/["`]/g, '').toLowerCase())
-      uniqueConstraints.push(...columns)
-    }
-  }
-
-  private hasUniqueConstraint(definition: string): boolean {
-    return definition.toUpperCase().includes('UNIQUE')
-  }
-
-  private analyzeRelationships(): void {
-    const junctionTables = this.identifyJunctionTables()
     
-    // Process junction tables first (MANY_TO_MANY)
-    junctionTables.forEach(junction => {
-      this.createManyToManyRelationship(junction)
-    })
+    return { type: 'FOREIGN_KEY', columns: [] }
+  }
 
-    // Process remaining foreign keys
-    for (const [tableName, foreignKeys] of this.foreignKeys) {
-      if (junctionTables.has(tableName)) continue // Skip junction tables
+  private parseUniqueConstraint(definition: string): ParsedConstraint {
+    const match = definition.match(/UNIQUE\s*\(([^)]+)\)/i)
+    const columns = match ? match[1].split(',').map(col => col.trim().replace(/["`]/g, '')) : []
+    
+    return {
+      type: 'UNIQUE',
+      columns
+    }
+  }
+
+  private parseCheckConstraint(definition: string): ParsedConstraint {
+    return {
+      type: 'CHECK',
+      columns: []
+    }
+  }
+
+  private parseNamedConstraint(definition: string): ParsedConstraint | null {
+    const constraintMatch = definition.match(/CONSTRAINT\s+(\w+)\s+(.*)/i)
+    if (!constraintMatch) return null
+    
+    const constraintName = constraintMatch[1]
+    const constraintDef = constraintMatch[2]
+    const upperDef = constraintDef.toUpperCase()
+    
+    if (upperDef.startsWith('PRIMARY KEY')) {
+      const constraint = this.parsePrimaryKeyConstraint(constraintDef)
+      constraint.name = constraintName
+      return constraint
+    } else if (upperDef.startsWith('FOREIGN KEY')) {
+      const constraint = this.parseForeignKeyConstraint(constraintDef)
+      constraint.name = constraintName
+      return constraint
+    } else if (upperDef.startsWith('UNIQUE')) {
+      const constraint = this.parseUniqueConstraint(constraintDef)
+      constraint.name = constraintName
+      return constraint
+    }
+    
+    return null
+  }
+
+  private parseAlterTable(statement: string): void {
+    const tableMatch = statement.match(/ALTER\s+TABLE\s+(\w+)/i)
+    if (!tableMatch) return
+    
+    const tableName = tableMatch[1]
+    const tableMeta = this.tables.get(tableName)
+    if (!tableMeta) return
+    
+    if (statement.toUpperCase().includes('ADD CONSTRAINT')) {
+      const constraintMatch = statement.match(/ADD\s+CONSTRAINT\s+(\w+)\s+(.*)/i)
+      if (constraintMatch) {
+        const constraint = this.parseNamedConstraint(`CONSTRAINT ${constraintMatch[1]} ${constraintMatch[2]}`)
+        if (constraint) {
+          tableMeta.constraints.push(constraint)
+        }
+      }
+    }
+  }
+
+  private parseCreateIndex(statement: string): void {
+    const match = statement.match(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+\w+\s+ON\s+(\w+)\s*\(([^)]+)\)/i)
+    if (!match) return
+    
+    const tableName = match[1]
+    const columns = match[2].split(',').map(col => col.trim().replace(/["`]/g, ''))
+    
+    const tableMeta = this.tables.get(tableName)
+    if (tableMeta) {
+      tableMeta.indexes.push(columns)
+    }
+  }
+
+  private identifyJunctionTables(): void {
+    for (const [tableName, meta] of this.tables) {
+      const fkConstraints = meta.constraints.filter(c => c.type === 'FOREIGN_KEY')
       
-      foreignKeys.forEach(fk => {
-        const relationshipType = this.determineRelationshipType(tableName, fk.column, fk.refTable, fk.refColumn)
-        
-        this.relationships.push({
-          from: { table: tableName, column: fk.column },
-          to: { table: fk.refTable, column: fk.refColumn },
-          type: relationshipType
-        })
-      })
-    }
-
-    // Detect relationships by convention (for tables without explicit FKs)
-    this.detectConventionBasedRelationships()
-  }
-
-  private identifyJunctionTables(): Set<string> {
-    const junctionTables = new Set<string>()
-    
-    for (const [tableName, foreignKeys] of this.foreignKeys) {
-      const table = this.tables.get(tableName)
-      if (!table) continue
-
       // Junction table criteria:
       // 1. Has exactly 2 foreign keys
-      // 2. Primary key consists of those 2 foreign key columns
-      // 3. Has minimal additional columns (typically just the FKs and maybe timestamps)
+      // 2. Primary key includes both foreign key columns
+      // 3. No other significant columns
+      if (fkConstraints.length === 2) {
+        const pkConstraint = meta.constraints.find(c => c.type === 'PRIMARY_KEY')
+        const allFkColumns = fkConstraints.flatMap(fk => fk.columns)
+        
+        if (pkConstraint && 
+            pkConstraint.columns.length === allFkColumns.length &&
+            pkConstraint.columns.every(col => allFkColumns.includes(col))) {
+          
+          // Check if table has minimal additional columns
+          const nonFkColumns = meta.table.columns.filter(col => 
+            !allFkColumns.includes(col.name) && 
+            !['id', 'created_at', 'updated_at', 'deleted_at'].includes(col.name.toLowerCase())
+          )
+          
+          if (nonFkColumns.length <= 2) {
+            this.junctionTables.add(tableName)
+          }
+        }
+      }
+    }
+  }
+
+  private detectAllRelationships(): void {
+    // First pass: Direct foreign key relationships
+    for (const [tableName, meta] of this.tables) {
+      const fkConstraints = meta.constraints.filter(c => c.type === 'FOREIGN_KEY')
       
-      if (foreignKeys.length === 2) {
-        const primaryKeys = this.primaryKeys.get(tableName) || []
-        const fkColumns = foreignKeys.map(fk => fk.column.toLowerCase())
+      for (const fkConstraint of fkConstraints) {
+        if (!fkConstraint.referencedTable || !fkConstraint.referencedColumns) continue
         
-        // Check if PK consists of exactly the 2 FK columns
-        const isPrimaryKeyComposite = primaryKeys.length === 2 && 
-          primaryKeys.every(pk => fkColumns.includes(pk.toLowerCase()))
-        
-        // Check if table has minimal additional columns
-        const nonFkColumns = table.columns.filter(col => 
-          !fkColumns.includes(col.name.toLowerCase()) && 
-          !this.isTimestampColumn(col.name)
-        )
-        
-        if (isPrimaryKeyComposite && nonFkColumns.length <= 2) {
-          junctionTables.add(tableName)
+        for (let i = 0; i < fkConstraint.columns.length; i++) {
+          const sourceColumn = fkConstraint.columns[i]
+          const targetColumn = fkConstraint.referencedColumns[i]
+          
+          if (!this.junctionTables.has(tableName)) {
+            const relationshipType = this.determineRelationshipType(
+              tableName, sourceColumn, fkConstraint.referencedTable, targetColumn
+            )
+            
+            this.relationships.push({
+              from: { table: tableName, column: sourceColumn },
+              to: { table: fkConstraint.referencedTable, column: targetColumn },
+              type: relationshipType
+            })
+          }
         }
       }
     }
     
-    return junctionTables
-  }
-
-  private isTimestampColumn(columnName: string): boolean {
-    const timestampPatterns = ['created_at', 'updated_at', 'deleted_at', 'timestamp', 'date_created', 'date_modified']
-    return timestampPatterns.some(pattern => columnName.toLowerCase().includes(pattern))
-  }
-
-  private createManyToManyRelationship(junctionTableName: string): void {
-    const foreignKeys = this.foreignKeys.get(junctionTableName)
-    if (!foreignKeys || foreignKeys.length !== 2) return
-
-    const [fk1, fk2] = foreignKeys
-
-    // Create bidirectional MANY_TO_MANY relationship
-    this.relationships.push({
-      from: { table: fk1.refTable, column: fk1.refColumn },
-      to: { table: fk2.refTable, column: fk2.refColumn },
-      type: 'MANY_TO_MANY',
-      junctionTable: junctionTableName
-    })
+    // Second pass: Many-to-many through junction tables
+    for (const junctionTableName of this.junctionTables) {
+      this.processManyToManyRelationship(junctionTableName)
+    }
+    
+    // Third pass: Convention-based relationships
+    this.detectConventionBasedRelationships()
   }
 
   private determineRelationshipType(
-    fromTable: string, 
-    fromColumn: string, 
-    toTable: string, 
-    toColumn: string
+    sourceTable: string, 
+    sourceColumn: string, 
+    targetTable: string, 
+    targetColumn: string
   ): 'ONE_TO_ONE' | 'ONE_TO_MANY' | 'MANY_TO_ONE' | 'MANY_TO_MANY' {
     
-    // Check if the foreign key column has a unique constraint
-    const fromTableUniqueConstraints = this.uniqueConstraints.get(fromTable) || []
-    const isFromColumnUnique = fromTableUniqueConstraints.includes(fromColumn.toLowerCase())
+    const sourceMeta = this.tables.get(sourceTable)
+    const targetMeta = this.tables.get(targetTable)
     
-    // Check if the referenced column is a primary key
-    const toTablePrimaryKeys = this.primaryKeys.get(toTable) || []
-    const isToColumnPrimary = toTablePrimaryKeys.includes(toColumn.toLowerCase())
+    if (!sourceMeta || !targetMeta) return 'MANY_TO_ONE'
     
-    // Determine relationship type
-    if (isFromColumnUnique && isToColumnPrimary) {
+    // Check if source column is unique (ONE_TO_ONE or ONE_TO_MANY)
+    const sourceIsUnique = this.isColumnUnique(sourceMeta, sourceColumn)
+    const targetIsUnique = this.isColumnUnique(targetMeta, targetColumn)
+    
+    if (sourceIsUnique && targetIsUnique) {
       return 'ONE_TO_ONE'
-    } else if (isToColumnPrimary) {
-      return 'MANY_TO_ONE'
+    } else if (sourceIsUnique) {
+      return 'ONE_TO_ONE' // Source can only reference one target
+    } else if (targetIsUnique) {
+      return 'MANY_TO_ONE' // Many sources can reference one target
     } else {
-      // Non-primary key reference, less common
-      return 'MANY_TO_ONE'
+      return 'MANY_TO_ONE' // Default case
     }
+  }
+
+  private isColumnUnique(tableMeta: TableMetadata, columnName: string): boolean {
+    // Check unique constraints
+    const uniqueConstraints = tableMeta.constraints.filter(c => c.type === 'UNIQUE')
+    const isSingleColumnUnique = uniqueConstraints.some(constraint => 
+      constraint.columns.length === 1 && constraint.columns[0] === columnName
+    )
+    
+    // Check primary key
+    const pkConstraints = tableMeta.constraints.filter(c => c.type === 'PRIMARY_KEY')
+    const isSingleColumnPK = pkConstraints.some(constraint =>
+      constraint.columns.length === 1 && constraint.columns[0] === columnName
+    )
+    
+    // Check column-level unique
+    const column = tableMeta.table.columns.find(c => c.name === columnName)
+    
+    return isSingleColumnUnique || isSingleColumnPK || (column?.primaryKey === true)
+  }
+
+  private processManyToManyRelationship(junctionTableName: string): void {
+    const junctionMeta = this.tables.get(junctionTableName)
+    if (!junctionMeta) return
+    
+    const fkConstraints = junctionMeta.constraints.filter(c => c.type === 'FOREIGN_KEY')
+    if (fkConstraints.length !== 2) return
+    
+    const [fk1, fk2] = fkConstraints
+    if (!fk1.referencedTable || !fk2.referencedTable) return
+    
+    // Create bidirectional many-to-many relationship
+    this.relationships.push({
+      from: { table: fk1.referencedTable, column: fk1.referencedColumns![0] },
+      to: { table: fk2.referencedTable, column: fk2.referencedColumns![0] },
+      type: 'MANY_TO_MANY'
+    })
+    
+    this.relationships.push({
+      from: { table: fk2.referencedTable, column: fk2.referencedColumns![0] },
+      to: { table: fk1.referencedTable, column: fk1.referencedColumns![0] },
+      type: 'MANY_TO_MANY'
+    })
   }
 
   private detectConventionBasedRelationships(): void {
     const tableNames = Array.from(this.tables.keys())
     
-    for (const [tableName, table] of this.tables) {
-      for (const column of table.columns) {
-        // Skip if already has explicit foreign key
+    for (const [tableName, meta] of this.tables) {
+      if (this.junctionTables.has(tableName)) continue
+      
+      for (const column of meta.table.columns) {
         if (column.foreignKey) continue
         
-        const possibleReferences = this.findPossibleReferences(column.name, tableNames, tableName)
+        const possibleReferences = this.findConventionBasedReferences(column.name, tableNames, tableName)
         
         for (const ref of possibleReferences) {
-          // Check if relationship already exists
           const relationshipExists = this.relationships.some(rel => 
             rel.from.table === tableName && 
             rel.from.column === column.name &&
@@ -336,9 +472,11 @@ export class SQLParser {
           if (!relationshipExists) {
             const refTable = this.tables.get(ref.tableName)
             if (refTable) {
-              const refColumn = refTable.columns.find(col => col.name.toLowerCase() === ref.columnName.toLowerCase())
+              const refColumn = refTable.table.columns.find(col => col.name === ref.columnName)
               if (refColumn && this.areColumnsCompatible(column, refColumn)) {
-                const relationshipType = this.determineRelationshipType(tableName, column.name, ref.tableName, ref.columnName)
+                const relationshipType = this.determineRelationshipType(
+                  tableName, column.name, ref.tableName, ref.columnName
+                )
                 
                 this.relationships.push({
                   from: { table: tableName, column: column.name },
@@ -353,42 +491,36 @@ export class SQLParser {
     }
   }
 
-  private findPossibleReferences(columnName: string, tableNames: string[], currentTable: string): Array<{tableName: string, columnName: string}> {
+  private findConventionBasedReferences(
+    columnName: string, 
+    tableNames: string[], 
+    currentTable: string
+  ): Array<{tableName: string, columnName: string}> {
     const references: Array<{tableName: string, columnName: string}> = []
     const lowerColumnName = columnName.toLowerCase()
     
     for (const tableName of tableNames) {
-      if (tableName === currentTable) continue
+      if (tableName === currentTable || this.junctionTables.has(tableName)) continue
       
       const lowerTableName = tableName.toLowerCase()
       
-      // Pattern: user_id -> users.id
+      // Pattern: user_id -> users.id, categoria_id -> categorias.id
       if (lowerColumnName.endsWith('_id')) {
         const prefix = lowerColumnName.slice(0, -3)
         const variations = [
-          prefix,           // user -> user
-          prefix + 's',     // user -> users  
-          prefix.slice(0, -1) // users -> user (remove 's')
+          prefix,
+          prefix + 's',
+          prefix + 'es', 
+          prefix.slice(0, -1), // Remove 's' from plural
+          prefix.replace(/s$/, ''), // Remove trailing 's'
+          prefix + 'a', // categoria -> categoria_id
+          prefix + 'as' // categoria -> categorias
         ]
         
         if (variations.includes(lowerTableName)) {
           const targetTable = this.tables.get(tableName)
-          if (targetTable?.columns.some(col => col.name.toLowerCase() === 'id')) {
+          if (targetTable?.table.columns.some(col => col.name.toLowerCase() === 'id')) {
             references.push({ tableName, columnName: 'id' })
-          }
-        }
-      }
-      
-      // Pattern: usuario_id -> usuarios.id (handle Portuguese/Spanish)
-      if (lowerColumnName.includes('_id')) {
-        const parts = lowerColumnName.split('_')
-        if (parts[parts.length - 1] === 'id') {
-          const prefix = parts.slice(0, -1).join('_')
-          if (lowerTableName.includes(prefix) || prefix.includes(lowerTableName)) {
-            const targetTable = this.tables.get(tableName)
-            if (targetTable?.columns.some(col => col.name.toLowerCase() === 'id')) {
-              references.push({ tableName, columnName: 'id' })
-            }
           }
         }
       }
@@ -403,13 +535,47 @@ export class SQLParser {
     
     const integerTypes = ['int', 'integer', 'bigint', 'smallint', 'serial', 'bigserial', 'tinyint', 'mediumint']
     const stringTypes = ['varchar', 'char', 'text', 'string', 'nvarchar', 'nchar']
-    const uuidTypes = ['uuid', 'uniqueidentifier']
+    const decimalTypes = ['decimal', 'numeric', 'float', 'double', 'real', 'money']
+    const dateTypes = ['date', 'datetime', 'timestamp', 'time']
     
-    return (
-      (integerTypes.includes(type1) && integerTypes.includes(type2)) ||
-      (stringTypes.includes(type1) && stringTypes.includes(type2)) ||
-      (uuidTypes.includes(type1) && uuidTypes.includes(type2)) ||
-      type1 === type2
-    )
+    const getTypeCategory = (type: string) => {
+      if (integerTypes.includes(type)) return 'integer'
+      if (stringTypes.includes(type)) return 'string'
+      if (decimalTypes.includes(type)) return 'decimal'
+      if (dateTypes.includes(type)) return 'date'
+      return type
+    }
+    
+    return getTypeCategory(type1) === getTypeCategory(type2)
+  }
+
+  private optimizeRelationships(): void {
+    // Remove duplicate relationships
+    const uniqueRelationships = new Map<string, Relationship>()
+    
+    for (const relationship of this.relationships) {
+      const key = `${relationship.from.table}.${relationship.from.column}->${relationship.to.table}.${relationship.to.column}`
+      
+      if (!uniqueRelationships.has(key)) {
+        uniqueRelationships.set(key, relationship)
+      }
+    }
+    
+    this.relationships = Array.from(uniqueRelationships.values())
+    
+    // Sort relationships by type priority
+    const typePriority = {
+      'ONE_TO_ONE': 0,
+      'ONE_TO_MANY': 1,
+      'MANY_TO_ONE': 2,
+      'MANY_TO_MANY': 3
+    }
+    
+    this.relationships.sort((a, b) => {
+      const priorityDiff = typePriority[a.type] - typePriority[b.type]
+      if (priorityDiff !== 0) return priorityDiff
+      
+      return `${a.from.table}.${a.from.column}`.localeCompare(`${b.from.table}.${b.from.column}`)
+    })
   }
 }
