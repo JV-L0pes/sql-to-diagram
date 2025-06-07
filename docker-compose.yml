@@ -1,0 +1,84 @@
+# docker-compose.yml - Development & Production Setup
+version: '3.8'
+
+services:
+  # Desenvolvimento
+  app-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: sql-architect-dev
+    ports:
+      - "3000:3000"
+      - "9229:9229" # Debug port
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    networks:
+      - sql-architect-network
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+  # Produção
+  app-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: sql-architect-prod
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+    networks:
+      - sql-architect-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+  # Nginx Reverse Proxy (Produção)
+  nginx:
+    image: nginx:alpine
+    container_name: sql-architect-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app-prod
+    networks:
+      - sql-architect-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+  # Redis para cache (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: sql-architect-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sql-architect-network
+    restart: unless-stopped
+    profiles:
+      - production
+      - cache
+
+networks:
+  sql-architect-network:
+    driver: bridge
+
+volumes:
+  redis_data:
