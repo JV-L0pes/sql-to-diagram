@@ -1,50 +1,25 @@
-// next.config.ts - Docker Optimization
+// next.config.ts - Otimizado sem Warnings
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable standalone output for Docker optimization
+  // Docker optimization
   output: 'standalone',
   
-  // Compress images
+  // Image optimization
   images: {
     formats: ['image/webp', 'image/avif'],
     minimumCacheTTL: 60,
   },
 
-  // Experimental features for performance
-  experimental: {
-    // Enable PPR for better performance
-    ppr: true,
-    // Optimize server components
-    serverComponentsExternalPackages: ['sharp'],
-  },
+  // Server external packages (Next.js 15 syntax)
+  serverExternalPackages: ['sharp'],
 
-  // Webpack optimization for Docker
-  webpack: (config, { dev, isServer }) => {
-    if (!dev && !isServer) {
-      // Production client optimizations
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          vendor: {
-            name: 'vendor',
-            chunks: 'all',
-            test: /node_modules/,
-          },
-        },
-      };
-    }
-    return config;
-  },
-
-  // Environment variables validation
+  // Disable telemetry
   env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
+    NEXT_TELEMETRY_DISABLED: '1',
   },
 
-  // Security headers
+  // Security headers (otimização de segurança)
   async headers() {
     return [
       {
@@ -57,6 +32,14 @@ const nextConfig: NextConfig = {
           {
             key: 'X-Content-Type-Options',
             value: 'nosniff',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
           },
           {
             key: 'Permissions-Policy',
@@ -76,6 +59,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // Otimizações de build SEM usar webpack config (evita warning)
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+  compress: true,
 };
 
 export default nextConfig;
