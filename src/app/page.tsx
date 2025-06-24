@@ -184,14 +184,6 @@ CREATE TABLE colaboradores (
                         style={{ fontSize: '14px', lineHeight: '1.8' }}
                       />
                       
-                      {/* Line numbers effect */}
-                      <div className="absolute left-2 top-6 text-xs text-gray-600 font-mono pointer-events-none select-none">
-                        {Array.from({ length: 20 }, (_, i) => (
-                          <div key={i} className="h-6 flex items-center">
-                            {String(i + 1).padStart(2, '0')}
-                          </div>
-                        ))}
-                      </div>
                     </div>
 
                     {/* Action Button */}
