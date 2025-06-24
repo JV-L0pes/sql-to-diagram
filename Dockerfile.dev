@@ -1,0 +1,23 @@
+# Dockerfile.dev - Development Container
+FROM node:20-alpine AS development
+
+# Install system dependencies
+RUN apk add --no-cache \
+    libc6-compat \
+    git \
+    curl
+
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy source code
+COPY . .
+
+# Expose development port and debug port
+EXPOSE 3000 9229
+
+# Development command with hot reload
+CMD ["npm", "run", "dev"]
