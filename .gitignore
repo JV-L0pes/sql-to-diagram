@@ -51,3 +51,6 @@ Thumbs.db
 # pastas de configuração de editores
 .vscode/
 .idea/
+
+# superpowers subagent-driven-development scratch workspace
+.superpowers/
