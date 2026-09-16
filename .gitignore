@@ -6,6 +6,7 @@ dist/
 *.pyc
 __pycache__/
 .venv/
+*.egg-info/
 apps/api/.pytest_cache/
 packages/api-client/openapi.json
 coverage/
