@@ -5,6 +5,9 @@ import { HomePage } from './HomePage'
 describe('HomePage', () => {
   it('renders the foundation heading', () => {
     render(<HomePage />)
-    expect(screen.getByRole('heading', { name: /sql to diagram — foundation/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /sql to diagram — foundation/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('packages/ui is linked')).toBeInTheDocument()
   })
 })
