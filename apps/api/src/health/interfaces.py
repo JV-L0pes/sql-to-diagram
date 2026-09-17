@@ -8,6 +8,6 @@ router = APIRouter(prefix="/api", tags=["health"])
 
 
 @router.get("/health")
-def get_health(db: Session = Depends(get_db)) -> dict:
+def get_health(db: Session = Depends(get_db)) -> dict:  # noqa: B008
     db.execute(text("SELECT 1"))
     return {"status": "ok", "db": "ok"}

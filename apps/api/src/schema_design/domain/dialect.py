@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 
 class InvalidDialectError(ValueError):
@@ -6,7 +6,7 @@ class InvalidDialectError(ValueError):
         super().__init__(f"Unknown SQL dialect: {value!r}")
 
 
-class SqlDialect(str, Enum):
+class SqlDialect(StrEnum):
     POSTGRES = "postgres"
     MYSQL = "mysql"
     SQLITE = "sqlite"
