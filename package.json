@@ -2,33 +2,15 @@
   "name": "sql-to-diagram",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.12.0",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "clsx": "^2.1.1",
-    "html-to-image": "^1.11.13",
-    "lucide-react": "^0.512.0",
-    "next": "15.3.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "reactflow": "^11.11.4",
-    "sql-parser-cst": "^0.33.1",
-    "tailwind-merge": "^3.3.0",
-    "zod": "^3.25.50"
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "test": "pnpm --filter web test && pnpm --filter @sql-to-diagram/ui test",
+    "lint": "biome check . && pnpm --filter web lint"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "15.3.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@biomejs/biome": "^1.9.0",
+    "@vercel/config": "^0.7.1"
   }
 }
