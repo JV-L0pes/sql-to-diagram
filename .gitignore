@@ -1,8 +1,7 @@
 node_modules/
 dist/
 .vite/
-.env
-.env.local
+.env*
 *.pyc
 __pycache__/
 .venv/
@@ -11,9 +10,7 @@ apps/api/.pytest_cache/
 packages/api-client/openapi.json
 coverage/
 .DS_Store
+.vercel
 
 # superpowers subagent-driven-development scratch workspace
 .superpowers/
-
-.vercel
-.env*
