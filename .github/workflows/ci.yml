@@ -43,6 +43,8 @@ jobs:
   api-client-schema:
     runs-on: ubuntu-latest
     needs: [web, api]
+    env:
+      DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
