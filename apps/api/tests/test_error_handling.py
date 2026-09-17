@@ -50,4 +50,8 @@ def test_unhandled_exception_returns_shared_error_body() -> None:
     response = client.get("/api/_test/boom")
 
     assert response.status_code == 500
-    assert response.json() == {"error": {"code": "internal_error", "message": "kaboom"}}
+    # The raw exception message must never leak to the client; only a
+    # generic message is returned (the real error is logged server-side).
+    assert response.json() == {
+        "error": {"code": "internal_error", "message": "Internal Server Error"}
+    }
