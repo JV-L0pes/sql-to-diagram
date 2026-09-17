@@ -1,4 +1,4 @@
-import { routes, type VercelConfig } from '@vercel/config/v1'
+import { type VercelConfig, routes } from '@vercel/config/v1'
 
 export const config: VercelConfig = {
   buildCommand: 'pnpm --filter web build',

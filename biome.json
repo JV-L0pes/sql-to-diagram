@@ -25,7 +25,9 @@
       "node_modules",
       "**/*.d.ts",
       "packages/api-client/src/schema.ts",
-      "eslint.config.mjs"
+      "packages/api-client/openapi.json",
+      "eslint.config.mjs",
+      ".vercel"
     ]
   }
 }
