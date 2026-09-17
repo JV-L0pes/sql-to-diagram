@@ -11,8 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -28,6 +26,8 @@ jobs:
     defaults:
       run:
         working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
