@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sql-to-diagram/api-client": "workspace:*",
     "@sql-to-diagram/ui": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
