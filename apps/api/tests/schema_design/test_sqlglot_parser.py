@@ -1,5 +1,5 @@
 from src.schema_design.domain.dialect import SqlDialect
-from src.schema_design.infrastructure.sqlglot_parser import extract_tables
+from src.schema_design.infrastructure.sqlglot_parser import extract_foreign_keys, extract_tables
 
 
 def test_extract_tables_reads_columns_and_column_level_primary_key():
@@ -58,3 +58,23 @@ def test_extract_tables_handles_multiple_statements():
     tables = extract_tables(sql, SqlDialect.POSTGRES)
 
     assert [t.name for t in tables] == ["users", "posts"]
+
+
+def test_extract_foreign_keys_from_table_level_constraint():
+    sql = """
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    """
+
+    foreign_keys = extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+    assert foreign_keys == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_returns_empty_list_when_none_declared():
+    sql = "CREATE TABLE users (id SERIAL PRIMARY KEY);"
+
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []

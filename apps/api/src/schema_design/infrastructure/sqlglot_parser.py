@@ -62,3 +62,32 @@ def _extract_column(
     nullable = not (is_not_null or is_primary_key)
 
     return Column(name=name, type=type_str, nullable=nullable, primary_key=is_primary_key)
+
+
+def extract_foreign_keys(sql: str, dialect: SqlDialect) -> list[tuple[str, str, str, str]]:
+    """Parse SQL text and extract explicit table-level FOREIGN KEY constraints.
+
+    Returns one (from_table, from_column, to_table, to_column) tuple per FK
+    column pair, in source order.
+    """
+    statements = sqlglot.parse(sql, read=dialect.value)
+    results: list[tuple[str, str, str, str]] = []
+
+    for statement in statements:
+        if statement is None:
+            continue
+        if not isinstance(statement, exp.Create) or statement.args.get("kind") != "TABLE":
+            continue
+        schema_expr = statement.this
+        from_table = schema_expr.this.name
+
+        for item in schema_expr.expressions:
+            if isinstance(item, exp.ForeignKey):
+                from_columns = [c.name for c in item.expressions]
+                reference = item.args["reference"]
+                to_table = reference.this.this.name
+                to_columns = [c.name for c in reference.this.expressions]
+                for from_col, to_col in zip(from_columns, to_columns):
+                    results.append((from_table, from_col, to_table, to_col))
+
+    return results
