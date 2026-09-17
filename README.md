@@ -74,6 +74,43 @@ CREATE TABLE posts (
 
 ---
 
+## Development
+
+This is a pnpm monorepo:
+
+- `apps/web` — Vite + React frontend
+- `apps/api` — FastAPI backend
+- `packages/ui` — shared React components
+- `packages/api-client` — TS types generated from the API's OpenAPI schema
+
+### Setup
+
+```bash
+pnpm install
+cd apps/api && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
+```
+
+Create `apps/api/.env` with a Neon connection string (see `docs/superpowers/specs/2026-09-16-foundation-design.md`).
+
+### Run locally
+
+```bash
+# terminal 1
+cd apps/api && uvicorn src.main:app --reload
+
+# terminal 2
+pnpm --filter web dev
+```
+
+### Test
+
+```bash
+pnpm --filter web test
+cd apps/api && pytest
+```
+
+---
+
 ## 📄 Licença | License
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.  
