@@ -219,3 +219,23 @@ not feature coverage (there's no feature yet):
   implementer finds simpler to wire into CI; doesn't affect architecture.
 - Whether `apps/web` needs a fetch-mocking library (msw) for the health
   check test, or a simpler manual mock suffices — trivial either way.
+
+## Deviations from this spec during implementation
+
+- **Health integration test uses an in-memory SQLite override, not a real
+  Neon dev-branch connection.** This spec's literal wording calls for
+  `apps/api/tests/test_health.py` to hit `/api/health` via `TestClient`
+  against a real (Neon dev branch) DB connection. The implementation
+  instead overrides `get_db` with an in-memory SQLite session
+  (`apps/api/tests/conftest.py`). This was a deliberate, reasonable
+  tradeoff made during implementation, not a bug: it lets CI run the full
+  test suite with no Neon credentials or network access, at the cost of
+  not exercising the real Postgres driver in this particular test. The
+  driver itself is still exercised in production and locally against a
+  real Postgres/Neon instance.
+- **`apps/web`'s FSD structure only has `app/` and `pages/` populated.**
+  `widgets/`, `features/`, `entities/`, and `shared/` do not exist yet.
+  This is expected for Phase 1 — there is no feature to slice yet, empty
+  directories don't need to exist ahead of use, and Git doesn't track
+  empty directories anyway. Later phases will populate these layers as
+  real functionality is added.
