@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { Placeholder } from '@sql-to-diagram/ui'
 import { getHealth } from '@sql-to-diagram/api-client'
+import { Placeholder } from '@sql-to-diagram/ui'
+import { useEffect, useState } from 'react'
 
 export function HomePage() {
   const [apiStatus, setApiStatus] = useState<string>('checking...')

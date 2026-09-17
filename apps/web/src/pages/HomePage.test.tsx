@@ -9,13 +9,15 @@ describe('HomePage', () => {
       vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ status: 'ok', db: 'ok' }),
-      })
+      }),
     )
   })
 
   it('renders the foundation heading', () => {
     render(<HomePage />)
-    expect(screen.getByRole('heading', { name: /sql to diagram — foundation/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /sql to diagram — foundation/i }),
+    ).toBeInTheDocument()
   })
 
   it('fetches and displays the API health status', async () => {

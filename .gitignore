@@ -14,3 +14,6 @@ coverage/
 
 # superpowers subagent-driven-development scratch workspace
 .superpowers/
+
+.vercel
+.env*
