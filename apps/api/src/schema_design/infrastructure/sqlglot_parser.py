@@ -1,0 +1,64 @@
+import sqlglot
+from sqlglot import exp
+
+from src.schema_design.domain.dialect import SqlDialect
+from src.schema_design.domain.table import Column, Table
+
+
+def extract_tables(sql: str, dialect: SqlDialect) -> list[Table]:
+    """Parse SQL text and extract Table/Column domain objects for each CREATE TABLE statement."""
+    statements = sqlglot.parse(sql, read=dialect.value)
+    tables: list[Table] = []
+
+    for statement in statements:
+        if statement is None:
+            continue
+        if not isinstance(statement, exp.Create) or statement.args.get("kind") != "TABLE":
+            continue
+        tables.append(_extract_table(statement, dialect))
+
+    return tables
+
+
+def _extract_table(create_stmt: exp.Create, dialect: SqlDialect) -> Table:
+    schema_expr = create_stmt.this
+    table_name = schema_expr.this.name
+
+    column_defs = [item for item in schema_expr.expressions if isinstance(item, exp.ColumnDef)]
+
+    composite_pk_columns: set[str] = set()
+    for item in schema_expr.expressions:
+        if isinstance(item, exp.PrimaryKey):
+            for pk_col in item.expressions:
+                composite_pk_columns.add(pk_col.name)
+
+    columns = [
+        _extract_column(column_def, dialect, composite_pk_columns)
+        for column_def in column_defs
+    ]
+
+    return Table(name=table_name, columns=columns)
+
+
+def _extract_column(
+    column_def: exp.ColumnDef, dialect: SqlDialect, composite_pk_columns: set[str]
+) -> Column:
+    name = column_def.this.name
+    type_str = (
+        column_def.args["kind"].sql(dialect=dialect.value) if column_def.args.get("kind") else ""
+    )
+
+    is_primary_key = name in composite_pk_columns
+    is_not_null = False
+    for constraint in column_def.constraints:
+        kind = constraint.kind
+        if isinstance(kind, exp.PrimaryKeyColumnConstraint):
+            is_primary_key = True
+        if isinstance(kind, exp.NotNullColumnConstraint):
+            is_not_null = True
+
+    # A primary key column is implicitly NOT NULL, even when sqlglot doesn't
+    # surface a separate NotNullColumnConstraint for it (e.g. `id SERIAL PRIMARY KEY`).
+    nullable = not (is_not_null or is_primary_key)
+
+    return Column(name=name, type=type_str, nullable=nullable, primary_key=is_primary_key)
