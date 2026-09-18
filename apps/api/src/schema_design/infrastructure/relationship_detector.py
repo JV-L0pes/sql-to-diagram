@@ -127,6 +127,8 @@ def detect_inferred_relationships(
 def _find_matching_table(column_name: str, table_names: list[str], exclude: str) -> str | None:
     prefix = column_name[: -len("_id")].lower()
     candidates = {prefix, f"{prefix}s", f"{prefix}es", f"{prefix}a", f"{prefix}as"}
+    if prefix.endswith("y"):
+        candidates.add(f"{prefix[:-1]}ies")
 
     for table_name in table_names:
         if table_name == exclude:
