@@ -82,3 +82,56 @@ def _determine_cardinality(
     if from_is_unique and to_is_unique:
         return RelationshipType.ONE_TO_ONE
     return RelationshipType.MANY_TO_ONE
+
+
+def detect_inferred_relationships(
+    tables: list[Table],
+    explicit_relationships: list[Relationship],
+) -> list[Relationship]:
+    explicit_columns = {(r.from_table, r.from_column) for r in explicit_relationships}
+    tables_by_name = {t.name: t for t in tables}
+    table_names = list(tables_by_name.keys())
+
+    inferred: list[Relationship] = []
+
+    for table in tables:
+        for column in table.columns:
+            if (table.name, column.name) in explicit_columns:
+                continue
+            if not column.name.endswith("_id"):
+                continue
+
+            target_table_name = _find_matching_table(column.name, table_names, exclude=table.name)
+            if target_table_name is None:
+                continue
+
+            target_table = tables_by_name[target_table_name]
+            target_id_column = target_table.find_column("id")
+            if target_id_column is None:
+                continue
+
+            inferred.append(
+                Relationship(
+                    from_table=table.name,
+                    from_column=column.name,
+                    to_table=target_table_name,
+                    to_column="id",
+                    type=RelationshipType.MANY_TO_ONE,
+                    source=RelationshipSource.INFERRED,
+                )
+            )
+
+    return inferred
+
+
+def _find_matching_table(column_name: str, table_names: list[str], exclude: str) -> str | None:
+    prefix = column_name[: -len("_id")].lower()
+    candidates = {prefix, f"{prefix}s", f"{prefix}es", f"{prefix}a", f"{prefix}as"}
+
+    for table_name in table_names:
+        if table_name == exclude:
+            continue
+        if table_name.lower() in candidates:
+            return table_name
+
+    return None

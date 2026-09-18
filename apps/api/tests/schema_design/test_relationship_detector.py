@@ -1,6 +1,6 @@
-from src.schema_design.domain.relationship import RelationshipSource, RelationshipType
+from src.schema_design.domain.relationship import Relationship, RelationshipSource, RelationshipType
 from src.schema_design.domain.table import Column, Table
-from src.schema_design.infrastructure.relationship_detector import detect_explicit_relationships
+from src.schema_design.infrastructure.relationship_detector import detect_explicit_relationships, detect_inferred_relationships
 
 
 def _table(name, columns):
@@ -67,3 +67,56 @@ def test_collapses_junction_table_into_many_to_many():
     assert pairs == {("students", "courses"), ("courses", "students")}
     # The junction table itself should not appear as a plain FK relationship
     assert all(r.from_table != "enrollments" for r in relationships)
+
+
+def test_infers_relationship_from_naming_convention_when_no_explicit_fk():
+    users = _table("users", [Column("id", "INTEGER", False, True)])
+    posts = _table(
+        "posts",
+        [
+            Column("id", "INTEGER", False, True),
+            Column("user_id", "INTEGER", False, False),
+        ],
+    )
+
+    relationships = detect_inferred_relationships([users, posts], explicit_relationships=[])
+
+    assert len(relationships) == 1
+    rel = relationships[0]
+    assert rel.from_table == "posts"
+    assert rel.from_column == "user_id"
+    assert rel.to_table == "users"
+    assert rel.to_column == "id"
+    assert rel.source == RelationshipSource.INFERRED
+
+
+def test_does_not_infer_when_explicit_relationship_already_covers_the_column():
+    users = _table("users", [Column("id", "INTEGER", False, True)])
+    posts = _table(
+        "posts",
+        [
+            Column("id", "INTEGER", False, True),
+            Column("user_id", "INTEGER", False, False),
+        ],
+    )
+    explicit = [
+        Relationship("posts", "user_id", "users", "id", RelationshipType.MANY_TO_ONE, RelationshipSource.EXPLICIT)
+    ]
+
+    relationships = detect_inferred_relationships([users, posts], explicit_relationships=explicit)
+
+    assert relationships == []
+
+
+def test_does_not_infer_when_no_matching_table_exists():
+    posts = _table(
+        "posts",
+        [
+            Column("id", "INTEGER", False, True),
+            Column("category_id", "INTEGER", False, False),
+        ],
+    )
+
+    relationships = detect_inferred_relationships([posts], explicit_relationships=[])
+
+    assert relationships == []
