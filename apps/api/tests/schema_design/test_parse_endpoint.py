@@ -34,3 +34,19 @@ def test_parse_endpoint_returns_400_for_invalid_dialect(client):
     response = client.post("/api/schema/parse", json=payload)
 
     assert response.status_code == 400
+
+
+def test_parse_endpoint_returns_400_for_mismatched_composite_foreign_key(client):
+    payload = {
+        "sql": (
+            "CREATE TABLE order_items ("
+            "order_id INTEGER NOT NULL, product_id INTEGER NOT NULL, "
+            "FOREIGN KEY (order_id, product_id) REFERENCES orders(id));"
+        ),
+        "dialect": "postgres",
+    }
+
+    response = client.post("/api/schema/parse", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_sql"

@@ -26,7 +26,7 @@ def parse_schema(request: ParseSchemaRequest) -> ParseSchemaResponse:
 
     try:
         result = parse_sql_schema(request.sql, dialect)
-    except ParseError as exc:
+    except (ParseError, ValueError) as exc:
         return JSONResponse(status_code=400, content=error_body("invalid_sql", str(exc)))
 
     response = ParseSchemaResponse(
