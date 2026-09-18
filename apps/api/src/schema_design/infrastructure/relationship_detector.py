@@ -1,3 +1,5 @@
+import re
+
 from src.schema_design.domain.relationship import Relationship, RelationshipSource, RelationshipType
 from src.schema_design.domain.table import Table
 
@@ -105,8 +107,10 @@ def _determine_cardinality(
 def detect_inferred_relationships(
     tables: list[Table],
     explicit_relationships: list[Relationship],
+    foreign_keys: list[tuple[str, str, str, str]],
 ) -> list[Relationship]:
-    explicit_columns = {(r.from_table, r.from_column) for r in explicit_relationships}
+    explicit_columns = {(fk[0], fk[1]) for fk in foreign_keys}
+    explicit_columns.update((r.from_table, r.from_column) for r in explicit_relationships)
     tables_by_name = {t.name: t for t in tables}
     table_names = list(tables_by_name.keys())
 
@@ -128,6 +132,9 @@ def detect_inferred_relationships(
             if target_id_column is None:
                 continue
 
+            if not _are_types_compatible(column.type, target_id_column.type):
+                continue
+
             inferred.append(
                 Relationship(
                     from_table=table.name,
@@ -140,6 +147,39 @@ def detect_inferred_relationships(
             )
 
     return inferred
+
+
+def _are_types_compatible(type_a: str, type_b: str) -> bool:
+    def normalize(t: str) -> str:
+        return re.sub(r"\([^)]*\)", "", t).strip().lower()
+
+    integer_types = {
+        "int",
+        "integer",
+        "bigint",
+        "smallint",
+        "serial",
+        "bigserial",
+        "tinyint",
+        "mediumint",
+    }
+    string_types = {"varchar", "char", "text", "string", "nvarchar", "nchar"}
+    decimal_types = {"decimal", "numeric", "float", "double", "real", "money"}
+    date_types = {"date", "datetime", "timestamp", "time"}
+
+    def category(t: str) -> str:
+        norm = normalize(t)
+        if norm in integer_types:
+            return "integer"
+        if norm in string_types:
+            return "string"
+        if norm in decimal_types:
+            return "decimal"
+        if norm in date_types:
+            return "date"
+        return norm
+
+    return category(type_a) == category(type_b)
 
 
 def _find_matching_table(column_name: str, table_names: list[str], exclude: str) -> str | None:

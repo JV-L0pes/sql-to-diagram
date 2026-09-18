@@ -82,7 +82,9 @@ def test_infers_relationship_from_naming_convention_when_no_explicit_fk():
         ],
     )
 
-    relationships = detect_inferred_relationships([users, posts], explicit_relationships=[])
+    relationships = detect_inferred_relationships(
+        [users, posts], explicit_relationships=[], foreign_keys=[]
+    )
 
     assert len(relationships) == 1
     rel = relationships[0]
@@ -113,7 +115,11 @@ def test_does_not_infer_when_explicit_relationship_already_covers_the_column():
         )
     ]
 
-    relationships = detect_inferred_relationships([users, posts], explicit_relationships=explicit)
+    foreign_keys = [("posts", "user_id", "users", "id")]
+
+    relationships = detect_inferred_relationships(
+        [users, posts], explicit_relationships=explicit, foreign_keys=foreign_keys
+    )
 
     assert relationships == []
 
@@ -127,6 +133,71 @@ def test_does_not_infer_when_no_matching_table_exists():
         ],
     )
 
-    relationships = detect_inferred_relationships([posts], explicit_relationships=[])
+    relationships = detect_inferred_relationships(
+        [posts], explicit_relationships=[], foreign_keys=[]
+    )
 
     assert relationships == []
+
+
+def test_does_not_infer_spurious_relationship_for_junction_table_fk_columns():
+    students = _table("students", [Column("id", "INTEGER", False, True)])
+    courses = _table("courses", [Column("id", "INTEGER", False, True)])
+    enrollments = _table(
+        "enrollments",
+        [
+            Column("student_id", "INTEGER", False, True),
+            Column("course_id", "INTEGER", False, True),
+        ],
+    )
+    foreign_keys = [
+        ("enrollments", "student_id", "students", "id"),
+        ("enrollments", "course_id", "courses", "id"),
+    ]
+
+    explicit_relationships = detect_explicit_relationships(
+        [students, courses, enrollments], foreign_keys
+    )
+    inferred_relationships = detect_inferred_relationships(
+        [students, courses, enrollments],
+        explicit_relationships=explicit_relationships,
+        foreign_keys=foreign_keys,
+    )
+
+    assert inferred_relationships == []
+
+
+def test_does_not_infer_when_target_id_column_type_is_incompatible():
+    tenants = _table("tenants", [Column("id", "INTEGER", False, True)])
+    accounts = _table(
+        "accounts",
+        [
+            Column("id", "INTEGER", False, True),
+            Column("tenant_id", "VARCHAR(36)", False, False),
+        ],
+    )
+
+    relationships = detect_inferred_relationships(
+        [tenants, accounts], explicit_relationships=[], foreign_keys=[]
+    )
+
+    assert relationships == []
+
+
+def test_infers_when_target_id_column_type_is_compatible_integer_family():
+    tenants = _table("tenants", [Column("id", "BIGINT", False, True)])
+    accounts = _table(
+        "accounts",
+        [
+            Column("id", "INTEGER", False, True),
+            Column("tenant_id", "INTEGER", False, False),
+        ],
+    )
+
+    relationships = detect_inferred_relationships(
+        [tenants, accounts], explicit_relationships=[], foreign_keys=[]
+    )
+
+    assert len(relationships) == 1
+    assert relationships[0].from_table == "accounts"
+    assert relationships[0].to_table == "tenants"

@@ -13,7 +13,9 @@ def parse_sql_schema(sql: str, dialect: SqlDialect) -> ParsedSchema:
     foreign_keys = extract_foreign_keys(sql, dialect)
 
     explicit_relationships = detect_explicit_relationships(tables, foreign_keys)
-    inferred_relationships = detect_inferred_relationships(tables, explicit_relationships)
+    inferred_relationships = detect_inferred_relationships(
+        tables, explicit_relationships, foreign_keys
+    )
     relationships = explicit_relationships + inferred_relationships
 
     warnings = validate_structure(tables, relationships)
