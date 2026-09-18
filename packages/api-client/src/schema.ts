@@ -42,6 +42,17 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ColumnResponse */
+        ColumnResponse: {
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+            /** Nullable */
+            nullable: boolean;
+            /** Primary Key */
+            primary_key: boolean;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -61,6 +72,37 @@ export interface components {
             /** Dialect */
             dialect: string;
         };
+        /** ParseSchemaResponse */
+        ParseSchemaResponse: {
+            /** Tables */
+            tables: components["schemas"]["TableResponse"][];
+            /** Relationships */
+            relationships: components["schemas"]["RelationshipResponse"][];
+            /** Warnings */
+            warnings: components["schemas"]["WarningResponse"][];
+        };
+        /** RelationshipResponse */
+        RelationshipResponse: {
+            /** From Table */
+            from_table: string;
+            /** From Column */
+            from_column: string;
+            /** To Table */
+            to_table: string;
+            /** To Column */
+            to_column: string;
+            /** Type */
+            type: string;
+            /** Source */
+            source: string;
+        };
+        /** TableResponse */
+        TableResponse: {
+            /** Name */
+            name: string;
+            /** Columns */
+            columns: components["schemas"]["ColumnResponse"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -73,6 +115,15 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WarningResponse */
+        WarningResponse: {
+            /** Code */
+            code: string;
+            /** Table */
+            table: string;
+            /** Message */
+            message: string;
         };
     };
     responses: never;
@@ -122,7 +173,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ParseSchemaResponse"];
                 };
             };
             /** @description Validation Error */
