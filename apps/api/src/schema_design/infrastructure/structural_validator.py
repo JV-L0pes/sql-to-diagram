@@ -1,6 +1,6 @@
 import re
 
-from src.schema_design.domain.relationship import Relationship
+from src.schema_design.domain.relationship import Relationship, RelationshipSource
 from src.schema_design.domain.table import Table
 from src.schema_design.domain.warning import SchemaWarning, WarningCode
 
@@ -82,6 +82,8 @@ def _check_nullable_foreign_keys(
     tables_by_name = {t.name: t for t in tables}
 
     for rel in relationships:
+        if rel.source != RelationshipSource.EXPLICIT:
+            continue
         source_table = tables_by_name.get(rel.from_table)
         if source_table is None:
             continue

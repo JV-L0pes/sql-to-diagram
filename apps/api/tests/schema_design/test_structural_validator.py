@@ -62,6 +62,32 @@ def test_warns_on_nullable_foreign_key():
     assert WarningCode.NULLABLE_FOREIGN_KEY in codes
 
 
+def test_no_nullable_foreign_key_warning_for_inferred_relationship():
+    categories = Table(name="categories", columns=[Column("id", "INTEGER", False, True)])
+    posts = Table(
+        name="posts",
+        columns=[
+            Column("id", "INTEGER", False, True),
+            Column("category_id", "INTEGER", True, False),  # nullable, naming-convention match
+        ],
+    )
+    relationships = [
+        Relationship(
+            "posts",
+            "category_id",
+            "categories",
+            "id",
+            RelationshipType.MANY_TO_ONE,
+            RelationshipSource.INFERRED,
+        )
+    ]
+
+    warnings = validate_structure([categories, posts], relationships)
+
+    codes = [w.code for w in warnings]
+    assert WarningCode.NULLABLE_FOREIGN_KEY not in codes
+
+
 def test_warns_on_non_snake_case_identifier():
     weird = Table(name="UserAccounts", columns=[Column("id", "INTEGER", False, True)])
 
