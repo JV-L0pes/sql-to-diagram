@@ -97,9 +97,13 @@ def test_extract_foreign_keys_returns_empty_list_when_none_declared():
 
 DIALECT_CREATE_TABLE = {
     SqlDialect.POSTGRES: "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL);",
-    SqlDialect.MYSQL: "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL);",
+    SqlDialect.MYSQL: (
+        "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL);"
+    ),
     SqlDialect.SQLITE: "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL);",
-    SqlDialect.MSSQL: "CREATE TABLE users (id INT IDENTITY(1,1) PRIMARY KEY, email VARCHAR(255) NOT NULL);",
+    SqlDialect.MSSQL: (
+        "CREATE TABLE users (id INT IDENTITY(1,1) PRIMARY KEY, email VARCHAR(255) NOT NULL);"
+    ),
 }
 
 

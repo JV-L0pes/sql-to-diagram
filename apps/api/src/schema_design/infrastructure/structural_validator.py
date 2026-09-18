@@ -8,7 +8,9 @@ _SNAKE_CASE_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 _NON_ATOMIC_TYPE_MARKERS = ("[]", "ARRAY", "JSON", "JSONB")
 
 
-def validate_structure(tables: list[Table], relationships: list[Relationship]) -> list[SchemaWarning]:
+def validate_structure(
+    tables: list[Table], relationships: list[Relationship]
+) -> list[SchemaWarning]:
     warnings: list[SchemaWarning] = []
 
     for table in tables:
@@ -42,7 +44,10 @@ def _check_non_atomic_columns(table: Table) -> list[SchemaWarning]:
                 SchemaWarning(
                     code=WarningCode.NON_ATOMIC_COLUMN_TYPE,
                     table=table.name,
-                    message=f"Column '{table.name}.{column.name}' has a non-atomic type ({column.type}).",
+                    message=(
+                        f"Column '{table.name}.{column.name}' has a non-atomic type "
+                        f"({column.type})."
+                    ),
                 )
             )
     return warnings
@@ -70,7 +75,9 @@ def _check_naming_convention(table: Table) -> list[SchemaWarning]:
     return warnings
 
 
-def _check_nullable_foreign_keys(tables: list[Table], relationships: list[Relationship]) -> list[SchemaWarning]:
+def _check_nullable_foreign_keys(
+    tables: list[Table], relationships: list[Relationship]
+) -> list[SchemaWarning]:
     warnings = []
     tables_by_name = {t.name: t for t in tables}
 

@@ -14,7 +14,9 @@ def detect_explicit_relationships(
     for from_table, from_column, to_table, to_column in foreign_keys:
         if from_table in junction_tables:
             continue
-        rel_type = _determine_cardinality(tables_by_name, from_table, from_column, to_table, to_column)
+        rel_type = _determine_cardinality(
+            tables_by_name, from_table, from_column, to_table, to_column
+        )
         relationships.append(
             Relationship(
                 from_table=from_table,
@@ -32,16 +34,32 @@ def detect_explicit_relationships(
             continue
         (_, _, table_a, col_a), (_, _, table_b, col_b) = junction_fks
         relationships.append(
-            Relationship(table_a, col_a, table_b, col_b, RelationshipType.MANY_TO_MANY, RelationshipSource.EXPLICIT)
+            Relationship(
+                table_a,
+                col_a,
+                table_b,
+                col_b,
+                RelationshipType.MANY_TO_MANY,
+                RelationshipSource.EXPLICIT,
+            )
         )
         relationships.append(
-            Relationship(table_b, col_b, table_a, col_a, RelationshipType.MANY_TO_MANY, RelationshipSource.EXPLICIT)
+            Relationship(
+                table_b,
+                col_b,
+                table_a,
+                col_a,
+                RelationshipType.MANY_TO_MANY,
+                RelationshipSource.EXPLICIT,
+            )
         )
 
     return relationships
 
 
-def _identify_junction_tables(tables: list[Table], foreign_keys: list[tuple[str, str, str, str]]) -> set[str]:
+def _identify_junction_tables(
+    tables: list[Table], foreign_keys: list[tuple[str, str, str, str]]
+) -> set[str]:
     junction_tables: set[str] = set()
 
     for table in tables:

@@ -41,8 +41,7 @@ def _extract_table(create_stmt: exp.Create, dialect: SqlDialect) -> Table:
                 composite_pk_columns.add(pk_col.name)
 
     columns = [
-        _extract_column(column_def, dialect, composite_pk_columns)
-        for column_def in column_defs
+        _extract_column(column_def, dialect, composite_pk_columns) for column_def in column_defs
     ]
 
     return Table(name=table_name, columns=columns)
@@ -97,7 +96,7 @@ def extract_foreign_keys(sql: str, dialect: SqlDialect) -> list[tuple[str, str, 
                 reference = item.args["reference"]
                 to_table = reference.this.this.name
                 to_columns = [c.name for c in reference.this.expressions]
-                for from_col, to_col in zip(from_columns, to_columns):
+                for from_col, to_col in zip(from_columns, to_columns, strict=True):
                     results.append((from_table, from_col, to_table, to_col))
             elif isinstance(item, exp.ColumnDef):
                 from_column = item.this.name

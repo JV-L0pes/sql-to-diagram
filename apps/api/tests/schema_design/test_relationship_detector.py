@@ -1,6 +1,9 @@
 from src.schema_design.domain.relationship import Relationship, RelationshipSource, RelationshipType
 from src.schema_design.domain.table import Column, Table
-from src.schema_design.infrastructure.relationship_detector import detect_explicit_relationships, detect_inferred_relationships
+from src.schema_design.infrastructure.relationship_detector import (
+    detect_explicit_relationships,
+    detect_inferred_relationships,
+)
 
 
 def _table(name, columns):
@@ -100,7 +103,14 @@ def test_does_not_infer_when_explicit_relationship_already_covers_the_column():
         ],
     )
     explicit = [
-        Relationship("posts", "user_id", "users", "id", RelationshipType.MANY_TO_ONE, RelationshipSource.EXPLICIT)
+        Relationship(
+            "posts",
+            "user_id",
+            "users",
+            "id",
+            RelationshipType.MANY_TO_ONE,
+            RelationshipSource.EXPLICIT,
+        )
     ]
 
     relationships = detect_inferred_relationships([users, posts], explicit_relationships=explicit)

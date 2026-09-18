@@ -46,7 +46,14 @@ def test_warns_on_nullable_foreign_key():
         ],
     )
     relationships = [
-        Relationship("posts", "user_id", "users", "id", RelationshipType.MANY_TO_ONE, RelationshipSource.EXPLICIT)
+        Relationship(
+            "posts",
+            "user_id",
+            "users",
+            "id",
+            RelationshipType.MANY_TO_ONE,
+            RelationshipSource.EXPLICIT,
+        )
     ]
 
     warnings = validate_structure([users, posts], relationships)

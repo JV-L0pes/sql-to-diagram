@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class WarningCode(str, Enum):
+class WarningCode(StrEnum):
     MISSING_PRIMARY_KEY = "missing_primary_key"
     NON_ATOMIC_COLUMN_TYPE = "non_atomic_column_type"
     NULLABLE_FOREIGN_KEY = "nullable_foreign_key"

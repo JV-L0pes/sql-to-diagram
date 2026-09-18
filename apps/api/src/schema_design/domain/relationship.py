@@ -1,15 +1,15 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class RelationshipType(str, Enum):
+class RelationshipType(StrEnum):
     ONE_TO_ONE = "ONE_TO_ONE"
     ONE_TO_MANY = "ONE_TO_MANY"
     MANY_TO_ONE = "MANY_TO_ONE"
     MANY_TO_MANY = "MANY_TO_MANY"
 
 
-class RelationshipSource(str, Enum):
+class RelationshipSource(StrEnum):
     EXPLICIT = "explicit"
     INFERRED = "inferred"
 
