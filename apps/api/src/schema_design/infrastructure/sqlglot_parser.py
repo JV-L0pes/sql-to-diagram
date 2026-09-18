@@ -99,5 +99,13 @@ def extract_foreign_keys(sql: str, dialect: SqlDialect) -> list[tuple[str, str, 
                 to_columns = [c.name for c in reference.this.expressions]
                 for from_col, to_col in zip(from_columns, to_columns):
                     results.append((from_table, from_col, to_table, to_col))
+            elif isinstance(item, exp.ColumnDef):
+                from_column = item.this.name
+                for constraint in item.constraints:
+                    if isinstance(constraint.kind, exp.Reference):
+                        reference_schema = constraint.kind.this
+                        to_table = reference_schema.this.name
+                        to_column = reference_schema.expressions[0].name
+                        results.append((from_table, from_column, to_table, to_column))
 
     return results

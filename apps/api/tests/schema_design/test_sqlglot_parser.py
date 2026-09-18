@@ -76,6 +76,19 @@ def test_extract_foreign_keys_from_table_level_constraint():
     assert foreign_keys == [("posts", "user_id", "users", "id")]
 
 
+def test_extract_foreign_keys_from_inline_column_reference():
+    sql = """
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id)
+    );
+    """
+
+    foreign_keys = extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+    assert foreign_keys == [("posts", "user_id", "users", "id")]
+
+
 def test_extract_foreign_keys_returns_empty_list_when_none_declared():
     sql = "CREATE TABLE users (id SERIAL PRIMARY KEY);"
 
