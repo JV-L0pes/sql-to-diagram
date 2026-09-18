@@ -95,6 +95,45 @@ def test_extract_foreign_keys_returns_empty_list_when_none_declared():
     assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []
 
 
+def test_extract_foreign_keys_raises_value_error_for_mismatched_composite_fk():
+    sql = """
+    CREATE TABLE order_items (
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      FOREIGN KEY (order_id, product_id) REFERENCES orders(id)
+    );
+    """
+
+    with pytest.raises(ValueError):
+        extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+
+def test_extract_foreign_keys_deduplicates_redundant_inline_and_table_level_fk():
+    sql = """
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    """
+
+    foreign_keys = extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+    assert foreign_keys == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_from_alter_table_add_constraint():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL);
+    ALTER TABLE posts ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users(id);
+    """
+
+    foreign_keys = extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+    assert foreign_keys == [("posts", "user_id", "users", "id")]
+
+
 DIALECT_CREATE_TABLE = {
     SqlDialect.POSTGRES: "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL);",
     SqlDialect.MYSQL: (

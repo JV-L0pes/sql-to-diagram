@@ -85,26 +85,54 @@ def extract_foreign_keys(sql: str, dialect: SqlDialect) -> list[tuple[str, str, 
     for statement in statements:
         if statement is None:
             continue
-        if not isinstance(statement, exp.Create) or statement.args.get("kind") != "TABLE":
-            continue
-        schema_expr = statement.this
-        from_table = schema_expr.this.name
+        if isinstance(statement, exp.Create) and statement.args.get("kind") == "TABLE":
+            results.extend(_extract_foreign_keys_from_create(statement))
+        elif isinstance(statement, exp.Alter):
+            results.extend(_extract_foreign_keys_from_alter(statement))
 
-        for item in schema_expr.expressions:
-            if isinstance(item, exp.ForeignKey):
-                from_columns = [c.name for c in item.expressions]
-                reference = item.args["reference"]
-                to_table = reference.this.this.name
-                to_columns = [c.name for c in reference.this.expressions]
-                for from_col, to_col in zip(from_columns, to_columns, strict=True):
-                    results.append((from_table, from_col, to_table, to_col))
-            elif isinstance(item, exp.ColumnDef):
-                from_column = item.this.name
-                for constraint in item.constraints:
-                    if isinstance(constraint.kind, exp.Reference):
-                        reference_schema = constraint.kind.this
-                        to_table = reference_schema.this.name
-                        to_column = reference_schema.expressions[0].name
-                        results.append((from_table, from_column, to_table, to_column))
+    return list(dict.fromkeys(results))
+
+
+def _extract_foreign_keys_from_create(
+    create_stmt: exp.Create,
+) -> list[tuple[str, str, str, str]]:
+    results: list[tuple[str, str, str, str]] = []
+    schema_expr = create_stmt.this
+    from_table = schema_expr.this.name
+
+    for item in schema_expr.expressions:
+        if isinstance(item, exp.ForeignKey):
+            from_columns = [c.name for c in item.expressions]
+            reference = item.args["reference"]
+            to_table = reference.this.this.name
+            to_columns = [c.name for c in reference.this.expressions]
+            for from_col, to_col in zip(from_columns, to_columns, strict=True):
+                results.append((from_table, from_col, to_table, to_col))
+        elif isinstance(item, exp.ColumnDef):
+            from_column = item.this.name
+            for constraint in item.constraints:
+                if isinstance(constraint.kind, exp.Reference):
+                    reference_schema = constraint.kind.this
+                    to_table = reference_schema.this.name
+                    to_column = reference_schema.expressions[0].name
+                    results.append((from_table, from_column, to_table, to_column))
+
+    return results
+
+
+def _extract_foreign_keys_from_alter(
+    alter_stmt: exp.Alter,
+) -> list[tuple[str, str, str, str]]:
+    """Extract FKs added via ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY (...)."""
+    results: list[tuple[str, str, str, str]] = []
+    from_table = alter_stmt.this.this.name
+
+    for fk in alter_stmt.find_all(exp.ForeignKey):
+        from_columns = [c.name for c in fk.expressions]
+        reference = fk.args["reference"]
+        to_table = reference.this.this.name
+        to_columns = [c.name for c in reference.this.expressions]
+        for from_col, to_col in zip(from_columns, to_columns, strict=True):
+            results.append((from_table, from_col, to_table, to_col))
 
     return results
