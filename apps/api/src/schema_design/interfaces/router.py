@@ -17,8 +17,8 @@ from src.shared_kernel.errors import error_body
 router = APIRouter(prefix="/api/schema", tags=["schema_design"])
 
 
-@router.post("/parse")
-def parse_schema(request: ParseSchemaRequest):
+@router.post("/parse", response_model=ParseSchemaResponse)
+def parse_schema(request: ParseSchemaRequest) -> ParseSchemaResponse:
     try:
         dialect = SqlDialect.from_string(request.dialect)
     except InvalidDialectError as exc:
