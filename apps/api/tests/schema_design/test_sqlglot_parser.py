@@ -1,3 +1,5 @@
+import pytest
+
 from src.schema_design.domain.dialect import SqlDialect
 from src.schema_design.infrastructure.sqlglot_parser import extract_foreign_keys, extract_tables
 
@@ -78,3 +80,26 @@ def test_extract_foreign_keys_returns_empty_list_when_none_declared():
     sql = "CREATE TABLE users (id SERIAL PRIMARY KEY);"
 
     assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []
+
+
+DIALECT_CREATE_TABLE = {
+    SqlDialect.POSTGRES: "CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255) NOT NULL);",
+    SqlDialect.MYSQL: "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, email VARCHAR(255) NOT NULL);",
+    SqlDialect.SQLITE: "CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL);",
+    SqlDialect.MSSQL: "CREATE TABLE users (id INT IDENTITY(1,1) PRIMARY KEY, email VARCHAR(255) NOT NULL);",
+}
+
+
+@pytest.mark.parametrize("dialect", list(SqlDialect))
+def test_extract_tables_works_across_all_dialects(dialect):
+    sql = DIALECT_CREATE_TABLE[dialect]
+
+    tables = extract_tables(sql, dialect)
+
+    assert len(tables) == 1
+    users = tables[0]
+    assert users.name == "users"
+    id_col = users.find_column("id")
+    assert id_col.primary_key is True
+    email_col = users.find_column("email")
+    assert email_col.nullable is False

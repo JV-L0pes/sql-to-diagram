@@ -4,10 +4,18 @@ from sqlglot import exp
 from src.schema_design.domain.dialect import SqlDialect
 from src.schema_design.domain.table import Column, Table
 
+# sqlglot names its T-SQL dialect "tsql", not "mssql" — translate our domain
+# dialect names to sqlglot's own before handing them to sqlglot's parser.
+_SQLGLOT_DIALECT_NAMES = {SqlDialect.MSSQL: "tsql"}
+
+
+def _sqlglot_dialect(dialect: SqlDialect) -> str:
+    return _SQLGLOT_DIALECT_NAMES.get(dialect, dialect.value)
+
 
 def extract_tables(sql: str, dialect: SqlDialect) -> list[Table]:
     """Parse SQL text and extract Table/Column domain objects for each CREATE TABLE statement."""
-    statements = sqlglot.parse(sql, read=dialect.value)
+    statements = sqlglot.parse(sql, read=_sqlglot_dialect(dialect))
     tables: list[Table] = []
 
     for statement in statements:
@@ -45,7 +53,9 @@ def _extract_column(
 ) -> Column:
     name = column_def.this.name
     type_str = (
-        column_def.args["kind"].sql(dialect=dialect.value) if column_def.args.get("kind") else ""
+        column_def.args["kind"].sql(dialect=_sqlglot_dialect(dialect))
+        if column_def.args.get("kind")
+        else ""
     )
 
     is_primary_key = name in composite_pk_columns
@@ -70,7 +80,7 @@ def extract_foreign_keys(sql: str, dialect: SqlDialect) -> list[tuple[str, str, 
     Returns one (from_table, from_column, to_table, to_column) tuple per FK
     column pair, in source order.
     """
-    statements = sqlglot.parse(sql, read=dialect.value)
+    statements = sqlglot.parse(sql, read=_sqlglot_dialect(dialect))
     results: list[tuple[str, str, str, str]] = []
 
     for statement in statements:
