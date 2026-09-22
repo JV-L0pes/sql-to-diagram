@@ -207,6 +207,41 @@ export interface components {
             /** Dialect */
             dialect: string;
         };
+        /** ProjectResponse */
+        ProjectResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sql */
+            sql: string;
+            /** Dialect */
+            dialect: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** ProjectSummaryResponse */
+        ProjectSummaryResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Dialect */
+            dialect: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** ProjectUpdateRequest */
         ProjectUpdateRequest: {
             /** Name */
@@ -227,6 +262,13 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** RegisterResponse */
+        RegisterResponse: {
+            /** Id */
+            id: string;
+            /** Email */
+            email: string;
         };
         /** RelationshipResponse */
         RelationshipResponse: {
@@ -249,6 +291,18 @@ export interface components {
             name: string;
             /** Columns */
             columns: components["schemas"]["ColumnResponse"][];
+        };
+        /** TokenResponse */
+        TokenResponse: {
+            /** Access Token */
+            access_token: string;
+            /** Refresh Token */
+            refresh_token: string;
+            /**
+             * Token Type
+             * @default bearer
+             */
+            token_type: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -353,7 +407,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["RegisterResponse"];
                 };
             };
             /** @description Validation Error */
@@ -386,7 +440,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
             /** @description Validation Error */
@@ -419,7 +473,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TokenResponse"];
                 };
             };
             /** @description Validation Error */
@@ -479,7 +533,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ProjectSummaryResponse"][];
                 };
             };
         };
@@ -503,7 +557,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ProjectResponse"];
                 };
             };
             /** @description Validation Error */
@@ -534,7 +588,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ProjectResponse"];
                 };
             };
             /** @description Validation Error */
@@ -569,7 +623,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["ProjectResponse"];
                 };
             };
             /** @description Validation Error */

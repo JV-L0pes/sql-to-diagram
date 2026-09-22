@@ -24,7 +24,7 @@ from src.shared_kernel.errors import error_body
 router = APIRouter(prefix="/api/projects", tags=["identity"])
 
 
-@router.get("")
+@router.get("", response_model=list[ProjectSummaryResponse])
 def list_projects(user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
     projects = ListProjects(ProjectRepository(db)).execute(user_id)
     return [
@@ -33,7 +33,7 @@ def list_projects(user_id: str = Depends(get_current_user), db: Session = Depend
     ]
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, response_model=ProjectResponse)
 def create_project(
     request: ProjectCreateRequest,
     user_id: str = Depends(get_current_user),
@@ -45,7 +45,7 @@ def create_project(
     return _to_response(project)
 
 
-@router.get("/{project_id}")
+@router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
     project_id: str, user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
 ):
@@ -56,7 +56,7 @@ def get_project(
     return _to_response(project)
 
 
-@router.put("/{project_id}")
+@router.put("/{project_id}", response_model=ProjectResponse)
 def update_project(
     project_id: str,
     request: ProjectUpdateRequest,

@@ -1,10 +1,12 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from src.schema_design.domain.dialect import SqlDialect
 
 
 class RegisterRequest(BaseModel):
-    email: str
+    email: str = Field(max_length=255)
     password: str = Field(min_length=8)
 
 
@@ -33,15 +35,25 @@ class LogoutRequest(BaseModel):
 
 
 class ProjectCreateRequest(BaseModel):
-    name: str
+    name: str = Field(max_length=200)
     sql: str
     dialect: str
+
+    @field_validator("dialect")
+    @classmethod
+    def validate_dialect(cls, value: str) -> str:
+        return SqlDialect.from_string(value).value
 
 
 class ProjectUpdateRequest(BaseModel):
-    name: str
+    name: str = Field(max_length=200)
     sql: str
     dialect: str
+
+    @field_validator("dialect")
+    @classmethod
+    def validate_dialect(cls, value: str) -> str:
+        return SqlDialect.from_string(value).value
 
 
 class ProjectSummaryResponse(BaseModel):

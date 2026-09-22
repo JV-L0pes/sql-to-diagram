@@ -22,7 +22,9 @@ class ProjectModel(Base):
     __tablename__ = "projects"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     sql: Mapped[str] = mapped_column(Text, nullable=False)
     dialect: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -37,7 +39,7 @@ class RefreshTokenModel(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    token_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     expires_at: Mapped[datetime] = mapped_column(nullable=False)
     revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(timezone.utc))

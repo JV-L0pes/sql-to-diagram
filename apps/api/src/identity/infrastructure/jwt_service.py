@@ -15,5 +15,10 @@ class JwtService:
         return jwt.encode(payload, self._secret, algorithm=self._algorithm)
 
     def decode_access_token(self, token: str) -> str:
-        payload = jwt.decode(token, self._secret, algorithms=[self._algorithm])
+        payload = jwt.decode(
+            token,
+            self._secret,
+            algorithms=[self._algorithm],
+            options={"require": ["sub", "exp"]},
+        )
         return payload["sub"]

@@ -64,3 +64,15 @@ def test_projects_endpoints_require_authentication(client):
     response = client.post("/api/projects", json={"name": "X", "sql": "...", "dialect": "postgres"})
 
     assert response.status_code == 401
+
+
+def test_create_project_rejects_invalid_dialect(client):
+    token = _register_and_login(client, email="invalid-dialect@example.com")
+
+    response = client.post(
+        "/api/projects",
+        json={"name": "X", "sql": "...", "dialect": "not-a-real-dialect"},
+        headers=_auth_headers(token),
+    )
+
+    assert response.status_code == 422

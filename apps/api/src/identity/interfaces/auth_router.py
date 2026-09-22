@@ -34,7 +34,7 @@ def _jwt_service() -> JwtService:
     return JwtService(secret=get_settings().jwt_secret)
 
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=201, response_model=RegisterResponse)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):
     use_case = RegisterUser(UserRepository(db), PasswordHasher())
     try:
@@ -44,7 +44,7 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):
     return RegisterResponse(id=user.id, email=user.email)
 
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     use_case = AuthenticateUser(UserRepository(db), PasswordHasher(), _jwt_service(), RefreshTokenRepository(db))
     try:
@@ -54,7 +54,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
 
 
-@router.post("/refresh")
+@router.post("/refresh", response_model=TokenResponse)
 def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
     use_case = RefreshAccessToken(RefreshTokenRepository(db), _jwt_service())
     try:
