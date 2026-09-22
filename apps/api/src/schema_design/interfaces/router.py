@@ -1,6 +1,6 @@
 import re
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from sqlglot.errors import SqlglotError
 
@@ -15,6 +15,7 @@ from src.schema_design.interfaces.schemas import (
     WarningResponse,
 )
 from src.shared_kernel.errors import error_body
+from src.shared_kernel.rate_limit import rate_limit
 
 router = APIRouter(prefix="/api/schema", tags=["schema_design"])
 
@@ -28,7 +29,11 @@ def _invalid_sql(message: str) -> JSONResponse:
     )
 
 
-@router.post("/parse", response_model=ParseSchemaResponse)
+@router.post(
+    "/parse",
+    response_model=ParseSchemaResponse,
+    dependencies=[Depends(rate_limit("schema_parse", 30, 60))],
+)
 def parse_schema(request: ParseSchemaRequest) -> ParseSchemaResponse:
     if not request.sql.strip():
         return _invalid_sql("SQL input is empty.")

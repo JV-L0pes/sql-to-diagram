@@ -25,6 +25,7 @@ from src.identity.interfaces.schemas import (
 )
 from src.shared_kernel.db import get_db
 from src.shared_kernel.errors import error_body
+from src.shared_kernel.rate_limit import rate_limit
 from src.shared_kernel.settings import get_settings
 
 router = APIRouter(prefix="/api/auth", tags=["identity"])
@@ -34,7 +35,12 @@ def _jwt_service() -> JwtService:
     return JwtService(secret=get_settings().jwt_secret)
 
 
-@router.post("/register", status_code=201, response_model=RegisterResponse)
+@router.post(
+    "/register",
+    status_code=201,
+    response_model=RegisterResponse,
+    dependencies=[Depends(rate_limit("register", 5, 60))],
+)
 def register(request: RegisterRequest, db: Session = Depends(get_db)):  # noqa: B008
     use_case = RegisterUser(UserRepository(db), PasswordHasher())
     try:
@@ -46,7 +52,11 @@ def register(request: RegisterRequest, db: Session = Depends(get_db)):  # noqa: 
     return RegisterResponse(id=user.id, email=user.email)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("login", 10, 60))],
+)
 def login(request: LoginRequest, db: Session = Depends(get_db)):  # noqa: B008
     use_case = AuthenticateUser(
         UserRepository(db), PasswordHasher(), _jwt_service(), RefreshTokenRepository(db)
@@ -58,7 +68,11 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):  # noqa: B008
     return TokenResponse(access_token=tokens.access_token, refresh_token=tokens.refresh_token)
 
 
-@router.post("/refresh", response_model=TokenResponse)
+@router.post(
+    "/refresh",
+    response_model=TokenResponse,
+    dependencies=[Depends(rate_limit("refresh", 20, 60))],
+)
 def refresh(request: RefreshRequest, db: Session = Depends(get_db)):  # noqa: B008
     use_case = RefreshAccessToken(RefreshTokenRepository(db), _jwt_service())
     try:
