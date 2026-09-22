@@ -1,5 +1,5 @@
 from argon2 import PasswordHasher as Argon2Hasher
-from argon2.exceptions import VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError
 
 
 class PasswordHasher:
@@ -12,5 +12,7 @@ class PasswordHasher:
     def verify(self, password_hash: str, password: str) -> bool:
         try:
             return self._hasher.verify(password_hash, password)
-        except VerifyMismatchError:
+        except (VerificationError, InvalidHashError):
+            # VerifyMismatchError subclasses VerificationError; InvalidHashError covers
+            # corrupt/unsupported stored hashes. Never leak a 500 for bad stored data.
             return False

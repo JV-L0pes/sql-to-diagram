@@ -31,3 +31,37 @@ def test_rejects_a_duplicate_email():
 
     with pytest.raises(EmailAlreadyRegisteredError):
         use_case.execute("a@example.com", "password2")
+
+
+class _AlwaysMissUserRepository:
+    """Simulates losing the check-then-create race: get_by_email misses, insert collides."""
+
+    def __init__(self, real_repository):
+        self._real = real_repository
+
+    def get_by_email(self, email):
+        return None
+
+    def create(self, **kwargs):
+        return self._real.create(**kwargs)
+
+
+def test_maps_integrity_error_race_to_email_already_registered():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    real = UserRepository(session)
+    use_case = RegisterUser(real, PasswordHasher())
+    use_case.execute("a@example.com", "correct horse battery staple")
+
+    racing = RegisterUser(_AlwaysMissUserRepository(real), PasswordHasher())
+    with pytest.raises(EmailAlreadyRegisteredError):
+        racing.execute("A@EXAMPLE.COM", "another password")
+
+
+def test_email_is_normalized_on_register():
+    use_case = _make_use_case()
+
+    user = use_case.execute("  A@Example.COM ", "correct horse battery staple")
+
+    assert user.email == "a@example.com"

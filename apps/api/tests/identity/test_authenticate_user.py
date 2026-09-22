@@ -57,3 +57,38 @@ def test_rejects_unknown_email():
 
     with pytest.raises(InvalidCredentialsError):
         use_case.execute("missing@example.com", "anything")
+
+
+def test_unknown_email_still_performs_a_dummy_password_verification():
+    session = _make_session()
+    _register(session)
+    hasher = PasswordHasher()
+    calls: list[str] = []
+    original_verify = hasher.verify
+
+    def recording_verify(password_hash: str, password: str) -> bool:
+        calls.append(password_hash)
+        return original_verify(password_hash, password)
+
+    hasher.verify = recording_verify  # type: ignore[method-assign]
+    use_case = AuthenticateUser(
+        UserRepository(session),
+        hasher,
+        JwtService(secret="test-secret"),
+        RefreshTokenRepository(session),
+    )
+
+    with pytest.raises(InvalidCredentialsError):
+        use_case.execute("missing@example.com", "anything")
+
+    assert len(calls) == 1  # constant-time: a verify runs even without a user
+
+
+def test_email_is_normalized_before_lookup():
+    session = _make_session()
+    _register(session, email="a@example.com")
+    use_case = _make_use_case(session)
+
+    tokens = use_case.execute("  A@Example.COM ", "correct horse battery staple")
+
+    assert tokens.access_token

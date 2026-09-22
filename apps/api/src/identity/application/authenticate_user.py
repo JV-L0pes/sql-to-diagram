@@ -10,6 +10,10 @@ from src.identity.infrastructure.password_hasher import PasswordHasher
 from src.identity.infrastructure.refresh_token_repository import RefreshTokenRepository
 from src.identity.infrastructure.user_repository import UserRepository
 
+# Verified against for unknown emails so response time does not reveal whether
+# the account exists. The password below is not a secret.
+_DUMMY_HASH = PasswordHasher().hash("dummy-password-for-timing-equalization")
+
 
 @dataclass(frozen=True)
 class TokenPair:
@@ -33,8 +37,12 @@ class AuthenticateUser:
         self._refresh_token_expiry_days = refresh_token_expiry_days
 
     def execute(self, email: str, password: str) -> TokenPair:
-        user = self._user_repository.get_by_email(email)
-        if user is None or not self._password_hasher.verify(user.password_hash, password):
+        normalized_email = email.strip().lower()
+        user = self._user_repository.get_by_email(normalized_email)
+        if user is None:
+            self._password_hasher.verify(_DUMMY_HASH, password)
+            raise InvalidCredentialsError()
+        if not self._password_hasher.verify(user.password_hash, password):
             raise InvalidCredentialsError()
 
         access_token = self._jwt_service.create_access_token(user.id)

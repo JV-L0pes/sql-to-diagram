@@ -1,6 +1,6 @@
 class EmailAlreadyRegisteredError(ValueError):
     def __init__(self, email: str):
-        super().__init__(f"Email already registered: {email!r}")
+        super().__init__("Email already registered")
 
 
 class InvalidCredentialsError(ValueError):

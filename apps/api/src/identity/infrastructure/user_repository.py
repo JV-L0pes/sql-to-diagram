@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.identity.domain.user import User
@@ -11,7 +12,11 @@ class UserRepository:
     def create(self, id: str, email: str, password_hash: str) -> User:
         model = UserModel(id=id, email=email, password_hash=password_hash)
         self._session.add(model)
-        self._session.commit()
+        try:
+            self._session.commit()
+        except IntegrityError:
+            self._session.rollback()
+            raise
         self._session.refresh(model)
         return self._to_domain(model)
 
