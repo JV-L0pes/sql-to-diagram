@@ -31,3 +31,4 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+markers = ["postgres: requires a real Postgres (set TEST_POSTGRES_URL)"]

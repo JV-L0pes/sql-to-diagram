@@ -1,6 +1,7 @@
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from src.identity.domain.errors import EmailAlreadyRegisteredError
 from src.identity.domain.user import User
 from src.identity.infrastructure.models import UserModel
 
@@ -14,9 +15,11 @@ class UserRepository:
         self._session.add(model)
         try:
             self._session.commit()
-        except IntegrityError:
+        except IntegrityError as exc:
+            # Translate storage details at the boundary: the application layer
+            # works with domain errors, not SQLAlchemy exceptions.
             self._session.rollback()
-            raise
+            raise EmailAlreadyRegisteredError(email) from exc
         self._session.refresh(model)
         return self._to_domain(model)
 
