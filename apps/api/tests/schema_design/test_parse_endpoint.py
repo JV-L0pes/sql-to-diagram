@@ -85,3 +85,11 @@ def test_parse_endpoint_handles_bare_references_without_500(client):
 
     assert response.status_code == 200
     assert response.json()["relationships"][0]["to_column"] == "id"
+
+
+def test_parse_endpoint_rejects_oversized_sql(client):
+    payload = {"sql": "CREATE TABLE t (x INT);" + ("-- padding\n" * 50_000), "dialect": "postgres"}
+
+    response = client.post("/api/schema/parse", json=payload)
+
+    assert response.status_code == 422

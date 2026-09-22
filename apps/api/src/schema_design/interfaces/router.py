@@ -66,15 +66,14 @@ def parse_schema(request: ParseSchemaRequest) -> ParseSchemaResponse:
                 from_column=r.from_column,
                 to_table=r.to_table,
                 to_column=r.to_column,
-                type=r.type.value,
-                source=r.source.value,
+                type=r.type,
+                source=r.source,
                 via_table=r.via_table,
             )
             for r in result.relationships
         ],
         warnings=[
-            WarningResponse(code=w.code.value, table=w.table, message=w.message)
-            for w in result.warnings
+            WarningResponse(code=w.code, table=w.table, message=w.message) for w in result.warnings
         ],
     )
     return response

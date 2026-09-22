@@ -157,6 +157,8 @@ export interface components {
             nullable: boolean;
             /** Primary Key */
             primary_key: boolean;
+            /** Unique */
+            unique: boolean;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -280,11 +282,21 @@ export interface components {
             to_table: string;
             /** To Column */
             to_column: string;
-            /** Type */
-            type: string;
-            /** Source */
-            source: string;
+            type: components["schemas"]["RelationshipType"];
+            source: components["schemas"]["RelationshipSource"];
+            /** Via Table */
+            via_table: string | null;
         };
+        /**
+         * RelationshipSource
+         * @enum {string}
+         */
+        RelationshipSource: "explicit" | "inferred";
+        /**
+         * RelationshipType
+         * @enum {string}
+         */
+        RelationshipType: "ONE_TO_ONE" | "ONE_TO_MANY" | "MANY_TO_ONE" | "MANY_TO_MANY";
         /** TableResponse */
         TableResponse: {
             /** Name */
@@ -317,10 +329,14 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * WarningCode
+         * @enum {string}
+         */
+        WarningCode: "missing_primary_key" | "non_atomic_column_type" | "nullable_foreign_key" | "non_snake_case_identifier";
         /** WarningResponse */
         WarningResponse: {
-            /** Code */
-            code: string;
+            code: components["schemas"]["WarningCode"];
             /** Table */
             table: string;
             /** Message */

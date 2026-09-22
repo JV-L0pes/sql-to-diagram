@@ -43,6 +43,7 @@ def detect_explicit_relationships(
                 col_b,
                 RelationshipType.MANY_TO_MANY,
                 RelationshipSource.EXPLICIT,
+                via_table=junction_name,
             )
         )
         relationships.append(
@@ -53,6 +54,7 @@ def detect_explicit_relationships(
                 col_a,
                 RelationshipType.MANY_TO_MANY,
                 RelationshipSource.EXPLICIT,
+                via_table=junction_name,
             )
         )
 
@@ -68,12 +70,15 @@ def _identify_junction_tables(
         fks_from_this_table = [fk for fk in foreign_keys if fk[0] == table.name]
         if len(fks_from_this_table) != 2:
             continue
+        # Two FKs pointing at the same table is a self-referencing table, not a junction.
+        if len({fk[2] for fk in fks_from_this_table}) != 2:
+            continue
 
         fk_columns = {fk[1] for fk in fks_from_this_table}
         pk_columns = {c.name for c in table.columns if c.primary_key}
-        non_fk_non_pk_columns = [c for c in table.columns if c.name not in fk_columns]
+        unique_sets = {frozenset(cols) for cols in table.unique_constraints}
 
-        if pk_columns == fk_columns and len(non_fk_non_pk_columns) <= 2:
+        if pk_columns == fk_columns or frozenset(fk_columns) in unique_sets:
             junction_tables.add(table.name)
 
     return junction_tables
@@ -81,7 +86,14 @@ def _identify_junction_tables(
 
 def _is_column_unique(table: Table, column_name: str) -> bool:
     column = table.find_column(column_name)
-    return column is not None and column.primary_key
+    if column is None:
+        return False
+    if column.unique:
+        return True
+    if not column.primary_key:
+        return False
+    # A composite PK column is not individually unique.
+    return sum(1 for c in table.columns if c.primary_key) == 1
 
 
 def _determine_cardinality(
@@ -128,11 +140,12 @@ def detect_inferred_relationships(
                 continue
 
             target_table = tables_by_name[target_table_name]
-            target_id_column = target_table.find_column("id")
-            if target_id_column is None:
+            primary_key_columns = [c for c in target_table.columns if c.primary_key]
+            if len(primary_key_columns) != 1:
                 continue
+            target_column = primary_key_columns[0]
 
-            if not _are_types_compatible(column.type, target_id_column.type):
+            if not _are_types_compatible(column.type, target_column.type):
                 continue
 
             inferred.append(
@@ -140,7 +153,7 @@ def detect_inferred_relationships(
                     from_table=table.name,
                     from_column=column.name,
                     to_table=target_table_name,
-                    to_column="id",
+                    to_column=target_column.name,
                     type=RelationshipType.MANY_TO_ONE,
                     source=RelationshipSource.INFERRED,
                 )
@@ -149,37 +162,53 @@ def detect_inferred_relationships(
     return inferred
 
 
+_INTEGER_TYPE_NAMES = {
+    "int",
+    "integer",
+    "bigint",
+    "smallint",
+    "serial",
+    "bigserial",
+    "tinyint",
+    "mediumint",
+}
+_STRING_TYPE_NAMES = {
+    "varchar",
+    "char",
+    "character",
+    "text",
+    "string",
+    "nvarchar",
+    "nchar",
+    "clob",
+}
+_DECIMAL_TYPE_NAMES = {"decimal", "numeric", "float", "double", "real", "money"}
+_DATE_TYPE_NAMES = {"date", "datetime", "timestamp", "time"}
+
+
+def _normalize_type(type_name: str) -> str:
+    normalized = re.sub(r"\([^)]*\)", "", type_name).strip().lower()
+    for suffix in (" unsigned", " zerofill"):
+        normalized = normalized.replace(suffix, "")
+    return normalized
+
+
+def _type_category(type_name: str) -> str:
+    normalized = _normalize_type(type_name)
+    first_token = normalized.split()[0] if normalized.split() else ""
+    for names, category in (
+        (_INTEGER_TYPE_NAMES, "integer"),
+        (_STRING_TYPE_NAMES, "string"),
+        (_DECIMAL_TYPE_NAMES, "decimal"),
+        (_DATE_TYPE_NAMES, "date"),
+    ):
+        if first_token in names:
+            return category
+    return normalized
+
+
 def _are_types_compatible(type_a: str, type_b: str) -> bool:
-    def normalize(t: str) -> str:
-        return re.sub(r"\([^)]*\)", "", t).strip().lower()
-
-    integer_types = {
-        "int",
-        "integer",
-        "bigint",
-        "smallint",
-        "serial",
-        "bigserial",
-        "tinyint",
-        "mediumint",
-    }
-    string_types = {"varchar", "char", "text", "string", "nvarchar", "nchar"}
-    decimal_types = {"decimal", "numeric", "float", "double", "real", "money"}
-    date_types = {"date", "datetime", "timestamp", "time"}
-
-    def category(t: str) -> str:
-        norm = normalize(t)
-        if norm in integer_types:
-            return "integer"
-        if norm in string_types:
-            return "string"
-        if norm in decimal_types:
-            return "decimal"
-        if norm in date_types:
-            return "date"
-        return norm
-
-    return category(type_a) == category(type_b)
+    return _type_category(type_a) == _type_category(type_b)
 
 
 def _find_matching_table(column_name: str, table_names: list[str], exclude: str) -> str | None:
@@ -188,10 +217,8 @@ def _find_matching_table(column_name: str, table_names: list[str], exclude: str)
     if prefix.endswith("y"):
         candidates.add(f"{prefix[:-1]}ies")
 
-    for table_name in table_names:
-        if table_name == exclude:
-            continue
-        if table_name.lower() in candidates:
-            return table_name
-
-    return None
+    matches = [name for name in table_names if name != exclude and name.lower() in candidates]
+    # Ambiguous matches (>1) are skipped rather than guessed.
+    if len(matches) != 1:
+        return None
+    return matches[0]
