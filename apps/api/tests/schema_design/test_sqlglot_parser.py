@@ -159,3 +159,73 @@ def test_extract_tables_works_across_all_dialects(dialect):
     assert id_col.primary_key is True
     email_col = users.find_column("email")
     assert email_col.nullable is False
+
+
+def test_extract_foreign_keys_resolves_bare_reference_to_target_primary_key():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users);
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_resolves_table_level_reference_without_column_list():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users
+    );
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_raises_value_error_for_bare_reference_to_composite_pk():
+    sql = """
+    CREATE TABLE orders (a INTEGER, b INTEGER, PRIMARY KEY (a, b));
+    CREATE TABLE items (id SERIAL PRIMARY KEY, order_id INTEGER REFERENCES orders);
+    """
+    with pytest.raises(ValueError):
+        extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+
+def test_extract_foreign_keys_skips_bare_reference_to_unknown_table():
+    sql = "CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES missing_table);"
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []
+
+
+def test_alter_table_add_column_is_merged_into_the_table():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    ALTER TABLE users ADD COLUMN email VARCHAR(255) NOT NULL;
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("email") is not None
+
+
+def test_alter_table_add_primary_key_marks_column():
+    sql = """
+    CREATE TABLE users (id SERIAL);
+    ALTER TABLE users ADD PRIMARY KEY (id);
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("id").primary_key is True
+
+
+def test_alter_table_add_unique_marks_column():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255));
+    ALTER TABLE users ADD CONSTRAINT users_email_key UNIQUE (email);
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("email").unique is True
+
+
+def test_alter_table_add_column_with_inline_reference_is_extracted():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY);
+    ALTER TABLE posts ADD COLUMN user_id INTEGER REFERENCES users;
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]

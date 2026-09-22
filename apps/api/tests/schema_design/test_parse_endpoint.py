@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_parse_endpoint_returns_tables_relationships_warnings(client):
     payload = {
         "sql": (
@@ -50,3 +53,35 @@ def test_parse_endpoint_returns_400_for_mismatched_composite_foreign_key(client)
 
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "invalid_sql"
+
+
+@pytest.mark.parametrize("sql", ["", "   \n  "])
+def test_parse_endpoint_returns_400_for_empty_sql(client, sql):
+    response = client.post("/api/schema/parse", json={"sql": sql, "dialect": "postgres"})
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_sql"
+
+
+def test_parse_endpoint_returns_400_for_tokenizer_error(client):
+    payload = {"sql": "CREATE TABLE t (name TEXT 'unterminated", "dialect": "postgres"}
+
+    response = client.post("/api/schema/parse", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_sql"
+
+
+def test_parse_endpoint_handles_bare_references_without_500(client):
+    payload = {
+        "sql": (
+            "CREATE TABLE users (id SERIAL PRIMARY KEY);"
+            "CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users);"
+        ),
+        "dialect": "postgres",
+    }
+
+    response = client.post("/api/schema/parse", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["relationships"][0]["to_column"] == "id"

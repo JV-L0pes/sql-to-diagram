@@ -4,20 +4,19 @@ from src.schema_design.infrastructure.relationship_detector import (
     detect_explicit_relationships,
     detect_inferred_relationships,
 )
-from src.schema_design.infrastructure.sqlglot_parser import extract_foreign_keys, extract_tables
+from src.schema_design.infrastructure.sqlglot_parser import parse_sql
 from src.schema_design.infrastructure.structural_validator import validate_structure
 
 
 def parse_sql_schema(sql: str, dialect: SqlDialect) -> ParsedSchema:
-    tables = extract_tables(sql, dialect)
-    foreign_keys = extract_foreign_keys(sql, dialect)
+    parsed = parse_sql(sql, dialect)
 
-    explicit_relationships = detect_explicit_relationships(tables, foreign_keys)
+    explicit_relationships = detect_explicit_relationships(parsed.tables, parsed.foreign_keys)
     inferred_relationships = detect_inferred_relationships(
-        tables, explicit_relationships, foreign_keys
+        parsed.tables, explicit_relationships, parsed.foreign_keys
     )
     relationships = explicit_relationships + inferred_relationships
 
-    warnings = validate_structure(tables, relationships)
+    warnings = validate_structure(parsed.tables, relationships)
 
-    return ParsedSchema(tables=tables, relationships=relationships, warnings=warnings)
+    return ParsedSchema(tables=parsed.tables, relationships=relationships, warnings=warnings)

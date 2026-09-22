@@ -11,6 +11,7 @@ class ColumnResponse(BaseModel):
     type: str
     nullable: bool
     primary_key: bool
+    unique: bool
 
 
 class TableResponse(BaseModel):
@@ -25,6 +26,7 @@ class RelationshipResponse(BaseModel):
     to_column: str
     type: str
     source: str
+    via_table: str | None
 
 
 class WarningResponse(BaseModel):

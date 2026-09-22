@@ -22,3 +22,4 @@ class Relationship:
     to_column: str
     type: RelationshipType
     source: RelationshipSource
+    via_table: str | None = None
