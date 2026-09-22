@@ -9,6 +9,10 @@ from alembic import context
 # Make src importable by adding parent directory to sys.path
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
+from src.identity.infrastructure import (
+    models,  # noqa: E402,F401  (registers models on Base.metadata)
+)
+from src.shared_kernel.db import Base  # noqa: E402
 from src.shared_kernel.settings import get_settings  # noqa: E402
 
 # this is the Alembic Config object, which provides
@@ -26,7 +30,7 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-target_metadata = None
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

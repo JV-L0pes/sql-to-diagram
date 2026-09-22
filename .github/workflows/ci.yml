@@ -29,6 +29,7 @@ jobs:
         working-directory: apps/api
     env:
       DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
+      JWT_SECRET: ci_placeholder_jwt_secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -45,6 +46,7 @@ jobs:
     needs: [web, api]
     env:
       DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
+      JWT_SECRET: ci_placeholder_jwt_secret
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

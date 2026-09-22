@@ -27,5 +27,6 @@ def test_normalize_database_url(raw_url: str, expected: str) -> None:
 def test_settings_normalizes_bare_postgresql_url(monkeypatch: pytest.MonkeyPatch) -> None:
     """Simulates Vercel's Neon-injected DATABASE_URL, which has no driver suffix."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pw@ep-example.neon.tech/db")
+    monkeypatch.setenv("JWT_SECRET", "test-secret")
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.database_url == "postgresql+psycopg://user:pw@ep-example.neon.tech/db"
