@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.health.interfaces import router as health_router
+from src.identity.interfaces.auth_router import router as auth_router
 from src.schema_design.interfaces.router import router as schema_design_router
 from src.shared_kernel.errors import error_body
 from src.shared_kernel.settings import get_settings
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(schema_design_router)
+    app.include_router(auth_router)
 
     @app.exception_handler(Exception)
     async def handle_unhandled_exception(_request: Request, exc: Exception) -> JSONResponse:
