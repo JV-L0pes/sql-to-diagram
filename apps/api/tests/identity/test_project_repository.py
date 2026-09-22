@@ -17,7 +17,9 @@ def test_create_then_get_by_id_and_user_returns_the_project():
     UserRepository(session).create(id="u1", email="a@example.com", password_hash="h")
     repo = ProjectRepository(session)
 
-    created = repo.create(id="p1", user_id="u1", name="Schema A", sql="CREATE TABLE t(id INT);", dialect="postgres")
+    created = repo.create(
+        id="p1", user_id="u1", name="Schema A", sql="CREATE TABLE t(id INT);", dialect="postgres"
+    )
     found = repo.get_by_id_and_user("p1", "u1")
 
     assert found is not None

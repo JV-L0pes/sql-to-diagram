@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+from datetime import UTC
 
 import pytest
 from sqlalchemy import create_engine
@@ -20,8 +21,8 @@ def _make_session():
 
 
 def _issue_raw_token(repo, user_id="u1"):
-    from datetime import datetime, timedelta, timezone
     import uuid
+    from datetime import datetime, timedelta
 
     raw = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw.encode()).hexdigest()
@@ -29,7 +30,7 @@ def _issue_raw_token(repo, user_id="u1"):
         id=str(uuid.uuid4()),
         user_id=user_id,
         token_hash=token_hash,
-        expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+        expires_at=datetime.now(UTC) + timedelta(days=30),
     )
     return raw
 

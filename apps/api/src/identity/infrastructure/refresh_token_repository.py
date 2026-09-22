@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
@@ -23,13 +23,15 @@ class RefreshTokenRepository:
             id=id,
             user_id=user_id,
             token_hash=token_hash,
-            expires_at=expires_at.replace(tzinfo=None) if expires_at.tzinfo is not None else expires_at,
+            expires_at=expires_at.replace(tzinfo=None)
+            if expires_at.tzinfo is not None
+            else expires_at,
         )
         self._session.add(model)
         self._session.commit()
 
     def get_valid_by_hash(self, token_hash: str) -> RefreshTokenRecord | None:
-        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        now = datetime.now(UTC).replace(tzinfo=None)
         model = (
             self._session.query(RefreshTokenModel)
             .filter(
@@ -48,5 +50,5 @@ class RefreshTokenRepository:
     def revoke(self, token_id: str) -> None:
         model = self._session.get(RefreshTokenModel, token_id)
         if model is not None:
-            model.revoked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            model.revoked_at = datetime.now(UTC).replace(tzinfo=None)
             self._session.commit()

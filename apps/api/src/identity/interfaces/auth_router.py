@@ -35,18 +35,22 @@ def _jwt_service() -> JwtService:
 
 
 @router.post("/register", status_code=201, response_model=RegisterResponse)
-def register(request: RegisterRequest, db: Session = Depends(get_db)):
+def register(request: RegisterRequest, db: Session = Depends(get_db)):  # noqa: B008
     use_case = RegisterUser(UserRepository(db), PasswordHasher())
     try:
         user = use_case.execute(request.email, request.password)
     except EmailAlreadyRegisteredError as exc:
-        return JSONResponse(status_code=409, content=error_body("email_already_registered", str(exc)))
+        return JSONResponse(
+            status_code=409, content=error_body("email_already_registered", str(exc))
+        )
     return RegisterResponse(id=user.id, email=user.email)
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
-    use_case = AuthenticateUser(UserRepository(db), PasswordHasher(), _jwt_service(), RefreshTokenRepository(db))
+def login(request: LoginRequest, db: Session = Depends(get_db)):  # noqa: B008
+    use_case = AuthenticateUser(
+        UserRepository(db), PasswordHasher(), _jwt_service(), RefreshTokenRepository(db)
+    )
     try:
         tokens = use_case.execute(request.email, request.password)
     except InvalidCredentialsError as exc:
@@ -55,7 +59,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
+def refresh(request: RefreshRequest, db: Session = Depends(get_db)):  # noqa: B008
     use_case = RefreshAccessToken(RefreshTokenRepository(db), _jwt_service())
     try:
         tokens = use_case.execute(request.refresh_token)
@@ -65,6 +69,6 @@ def refresh(request: RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/logout", status_code=204)
-def logout(request: LogoutRequest, db: Session = Depends(get_db)):
+def logout(request: LogoutRequest, db: Session = Depends(get_db)):  # noqa: B008
     Logout(RefreshTokenRepository(db)).execute(request.refresh_token)
     return Response(status_code=204)

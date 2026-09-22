@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -18,21 +18,28 @@ class ProjectRepository:
         return self._to_domain(model)
 
     def list_by_user(self, user_id: str) -> list[Project]:
-        models = self._session.query(ProjectModel).filter_by(user_id=user_id).order_by(ProjectModel.created_at).all()
+        models = (
+            self._session.query(ProjectModel)
+            .filter_by(user_id=user_id)
+            .order_by(ProjectModel.created_at)
+            .all()
+        )
         return [self._to_domain(m) for m in models]
 
     def get_by_id_and_user(self, project_id: str, user_id: str) -> Project | None:
         model = self._find(project_id, user_id)
         return self._to_domain(model) if model else None
 
-    def update(self, project_id: str, user_id: str, name: str, sql: str, dialect: str) -> Project | None:
+    def update(
+        self, project_id: str, user_id: str, name: str, sql: str, dialect: str
+    ) -> Project | None:
         model = self._find(project_id, user_id)
         if model is None:
             return None
         model.name = name
         model.sql = sql
         model.dialect = dialect
-        model.updated_at = datetime.now(timezone.utc)
+        model.updated_at = datetime.now(UTC)
         self._session.commit()
         self._session.refresh(model)
         return self._to_domain(model)

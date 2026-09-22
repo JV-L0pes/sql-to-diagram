@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -14,11 +14,11 @@ def _make_session():
 
 
 def _future():
-    return datetime.now(timezone.utc) + timedelta(days=30)
+    return datetime.now(UTC) + timedelta(days=30)
 
 
 def _past():
-    return datetime.now(timezone.utc) - timedelta(days=1)
+    return datetime.now(UTC) - timedelta(days=1)
 
 
 def test_create_then_get_valid_by_hash_returns_the_record():

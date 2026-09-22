@@ -25,7 +25,10 @@ router = APIRouter(prefix="/api/projects", tags=["identity"])
 
 
 @router.get("", response_model=list[ProjectSummaryResponse])
-def list_projects(user_id: str = Depends(get_current_user), db: Session = Depends(get_db)):
+def list_projects(
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
+):
     projects = ListProjects(ProjectRepository(db)).execute(user_id)
     return [
         ProjectSummaryResponse(id=p.id, name=p.name, dialect=p.dialect, updated_at=p.updated_at)
@@ -37,7 +40,7 @@ def list_projects(user_id: str = Depends(get_current_user), db: Session = Depend
 def create_project(
     request: ProjectCreateRequest,
     user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     project = CreateProject(ProjectRepository(db)).execute(
         user_id, request.name, request.sql, request.dialect
@@ -47,7 +50,9 @@ def create_project(
 
 @router.get("/{project_id}", response_model=ProjectResponse)
 def get_project(
-    project_id: str, user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+    project_id: str,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     try:
         project = GetProject(ProjectRepository(db)).execute(project_id, user_id)
@@ -61,7 +66,7 @@ def update_project(
     project_id: str,
     request: ProjectUpdateRequest,
     user_id: str = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     try:
         project = UpdateProject(ProjectRepository(db)).execute(
@@ -74,7 +79,9 @@ def update_project(
 
 @router.delete("/{project_id}", status_code=204)
 def delete_project(
-    project_id: str, user_id: str = Depends(get_current_user), db: Session = Depends(get_db)
+    project_id: str,
+    user_id: str = Depends(get_current_user),
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     try:
         DeleteProject(ProjectRepository(db)).execute(project_id, user_id)

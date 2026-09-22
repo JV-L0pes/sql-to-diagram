@@ -16,4 +16,6 @@ class RegisterUser:
             raise EmailAlreadyRegisteredError(email)
 
         password_hash = self._password_hasher.hash(password)
-        return self._user_repository.create(id=str(uuid.uuid4()), email=email, password_hash=password_hash)
+        return self._user_repository.create(
+            id=str(uuid.uuid4()), email=email, password_hash=password_hash
+        )

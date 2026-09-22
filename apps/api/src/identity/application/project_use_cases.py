@@ -10,7 +10,9 @@ class CreateProject:
         self._project_repository = project_repository
 
     def execute(self, user_id: str, name: str, sql: str, dialect: str) -> Project:
-        return self._project_repository.create(id=str(uuid.uuid4()), user_id=user_id, name=name, sql=sql, dialect=dialect)
+        return self._project_repository.create(
+            id=str(uuid.uuid4()), user_id=user_id, name=name, sql=sql, dialect=dialect
+        )
 
 
 class ListProjects:
@@ -37,7 +39,9 @@ class UpdateProject:
         self._project_repository = project_repository
 
     def execute(self, project_id: str, user_id: str, name: str, sql: str, dialect: str) -> Project:
-        project = self._project_repository.update(project_id, user_id, name=name, sql=sql, dialect=dialect)
+        project = self._project_repository.update(
+            project_id, user_id, name=name, sql=sql, dialect=dialect
+        )
         if project is None:
             raise ProjectNotFoundError(project_id)
         return project

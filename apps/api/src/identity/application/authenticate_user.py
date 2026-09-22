@@ -2,7 +2,7 @@ import hashlib
 import secrets
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from src.identity.domain.errors import InvalidCredentialsError
 from src.identity.infrastructure.jwt_service import JwtService
@@ -44,7 +44,7 @@ class AuthenticateUser:
     def _issue_refresh_token(self, user_id: str) -> str:
         raw_token = secrets.token_urlsafe(32)
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=self._refresh_token_expiry_days)
+        expires_at = datetime.now(UTC) + timedelta(days=self._refresh_token_expiry_days)
         self._refresh_token_repository.create(
             id=str(uuid.uuid4()), user_id=user_id, token_hash=token_hash, expires_at=expires_at
         )

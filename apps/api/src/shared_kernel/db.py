@@ -9,6 +9,7 @@ from src.shared_kernel.settings import get_settings
 class Base(DeclarativeBase):
     pass
 
+
 settings = get_settings()
 
 engine = create_engine(settings.database_url, pool_pre_ping=True)

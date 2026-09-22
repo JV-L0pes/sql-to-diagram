@@ -1,7 +1,7 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from src.identity.application.authenticate_user import TokenPair
 from src.identity.domain.errors import InvalidRefreshTokenError
@@ -31,8 +31,11 @@ class RefreshAccessToken:
         access_token = self._jwt_service.create_access_token(record.user_id)
         new_raw_token = secrets.token_urlsafe(32)
         new_token_hash = hashlib.sha256(new_raw_token.encode()).hexdigest()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=self._refresh_token_expiry_days)
+        expires_at = datetime.now(UTC) + timedelta(days=self._refresh_token_expiry_days)
         self._refresh_token_repository.create(
-            id=str(uuid.uuid4()), user_id=record.user_id, token_hash=new_token_hash, expires_at=expires_at
+            id=str(uuid.uuid4()),
+            user_id=record.user_id,
+            token_hash=new_token_hash,
+            expires_at=expires_at,
         )
         return TokenPair(access_token=access_token, refresh_token=new_raw_token)
