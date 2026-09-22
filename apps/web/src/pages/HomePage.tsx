@@ -1,11 +1,12 @@
 import { getHealth } from '@schemio/api-client'
 import { Placeholder } from '@schemio/ui'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 type ApiStatus = 'checking' | 'ok' | 'unreachable'
 
 export function HomePage() {
   const [apiStatus, setApiStatus] = useState<ApiStatus>('checking')
+  const controllerRef = useRef<AbortController | null>(null)
 
   const checkHealth = useCallback((signal?: AbortSignal) => {
     setApiStatus('checking')
@@ -16,11 +17,17 @@ export function HomePage() {
       })
   }, [])
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    controllerRef.current?.abort()
     const controller = new AbortController()
-    checkHealth(controller.signal)
-    return () => controller.abort()
+    controllerRef.current = controller
+    void checkHealth(controller.signal)
   }, [checkHealth])
+
+  useEffect(() => {
+    load()
+    return () => controllerRef.current?.abort()
+  }, [load])
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-2">
@@ -28,7 +35,7 @@ export function HomePage() {
       <Placeholder label="packages/ui is linked" />
       <p aria-live="polite">api: {apiStatus}</p>
       {apiStatus === 'unreachable' && (
-        <button type="button" onClick={() => checkHealth()}>
+        <button type="button" onClick={load}>
           Retry
         </button>
       )}
