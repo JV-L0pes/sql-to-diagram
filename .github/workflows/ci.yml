@@ -29,7 +29,7 @@ jobs:
         working-directory: apps/api
     env:
       DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
-      JWT_SECRET: ci_placeholder_jwt_secret
+      JWT_SECRET: ci_placeholder_jwt_secret_at_least_32_chars
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -46,7 +46,7 @@ jobs:
     needs: [web, api]
     env:
       DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
-      JWT_SECRET: ci_placeholder_jwt_secret
+      JWT_SECRET: ci_placeholder_jwt_secret_at_least_32_chars
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -66,3 +66,20 @@ jobs:
       - run: pnpm generate
         working-directory: packages/api-client
       - run: git diff --exit-code packages/api-client/src/schema.ts packages/api-client/openapi.json
+
+  deploy-manifest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    env:
+      DATABASE_URL: postgresql+psycopg://ci:ci@localhost/ci_placeholder
+      JWT_SECRET: ci_placeholder_jwt_secret_at_least_32_chars
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r ../../api/requirements.txt
+      - run: python -c "from src.main import app; print(app.title)"
