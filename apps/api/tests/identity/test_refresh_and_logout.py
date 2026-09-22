@@ -60,22 +60,83 @@ def test_refresh_rejects_an_unknown_token():
 
 
 def test_logout_revokes_a_valid_token():
+    from datetime import datetime, timedelta
+
+    from src.identity.infrastructure.revoked_access_token_repository import (
+        RevokedAccessTokenRepository,
+    )
+
     session = _make_session()
     repo = RefreshTokenRepository(session)
     raw = _issue_raw_token(repo)
     use_case = RefreshAccessToken(repo, JwtService(secret="test-secret"))
 
-    Logout(repo).execute(raw)
+    Logout(repo, RevokedAccessTokenRepository(session)).execute(
+        raw,
+        access_jti="j1",
+        access_expires_at=datetime.now(UTC) + timedelta(minutes=30),
+    )
 
     with pytest.raises(InvalidRefreshTokenError):
         use_case.execute(raw)
 
 
 def test_logout_is_a_no_op_for_an_unknown_token():
+    from datetime import datetime, timedelta
+
+    from src.identity.infrastructure.revoked_access_token_repository import (
+        RevokedAccessTokenRepository,
+    )
+
     session = _make_session()
     repo = RefreshTokenRepository(session)
 
-    Logout(repo).execute("not-a-real-token")  # must not raise
+    Logout(repo, RevokedAccessTokenRepository(session)).execute(
+        "not-a-real-token",  # must not raise
+        access_jti="j1",
+        access_expires_at=datetime.now(UTC) + timedelta(minutes=30),
+    )
+
+
+def test_rotation_cleans_up_expired_refresh_tokens():
+    from datetime import datetime, timedelta
+
+    from src.identity.infrastructure.models import RefreshTokenModel
+
+    session = _make_session()
+    repo = RefreshTokenRepository(session)
+    past = datetime.now(UTC) - timedelta(days=1)
+    session.add(RefreshTokenModel(id="old", user_id="u1", token_hash="h-old", expires_at=past))
+    session.commit()
+    raw = _issue_raw_token(repo)
+
+    RefreshAccessToken(repo, JwtService(secret="test-secret")).execute(raw)
+
+    assert session.get(RefreshTokenModel, "old") is None
+
+
+def test_logout_cleans_up_expired_revoked_access_tokens():
+    from datetime import datetime, timedelta
+
+    from src.identity.infrastructure.models import RevokedAccessTokenModel
+    from src.identity.infrastructure.revoked_access_token_repository import (
+        RevokedAccessTokenRepository,
+    )
+
+    session = _make_session()
+    repo = RefreshTokenRepository(session)
+    revoked = RevokedAccessTokenRepository(session)
+    past = datetime.now(UTC) - timedelta(days=1)
+    revoked.add(jti="j-old", expires_at=past)
+    raw = _issue_raw_token(repo)
+
+    Logout(repo, revoked).execute(
+        raw,
+        access_jti="j-current",
+        access_expires_at=datetime.now(UTC) + timedelta(minutes=30),
+    )
+
+    assert session.get(RevokedAccessTokenModel, "j-old") is None
 
 
 def test_reusing_a_revoked_token_revokes_the_whole_token_family():

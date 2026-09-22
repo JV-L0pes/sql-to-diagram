@@ -11,10 +11,14 @@ from src.identity.domain.errors import (
     InvalidCredentialsError,
     InvalidRefreshTokenError,
 )
-from src.identity.infrastructure.jwt_service import JwtService
+from src.identity.infrastructure.jwt_service import AccessTokenClaims, JwtService
 from src.identity.infrastructure.password_hasher import PasswordHasher
 from src.identity.infrastructure.refresh_token_repository import RefreshTokenRepository
+from src.identity.infrastructure.revoked_access_token_repository import (
+    RevokedAccessTokenRepository,
+)
 from src.identity.infrastructure.user_repository import UserRepository
+from src.identity.interfaces.dependencies import get_current_claims
 from src.identity.interfaces.schemas import (
     LoginRequest,
     LogoutRequest,
@@ -83,6 +87,12 @@ def refresh(request: RefreshRequest, db: Session = Depends(get_db)):  # noqa: B0
 
 
 @router.post("/logout", status_code=204)
-def logout(request: LogoutRequest, db: Session = Depends(get_db)):  # noqa: B008
-    Logout(RefreshTokenRepository(db)).execute(request.refresh_token)
+def logout(
+    request: LogoutRequest,
+    claims: AccessTokenClaims = Depends(get_current_claims),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
+):
+    Logout(RefreshTokenRepository(db), RevokedAccessTokenRepository(db)).execute(
+        request.refresh_token, claims.jti, claims.expires_at
+    )
     return Response(status_code=204)

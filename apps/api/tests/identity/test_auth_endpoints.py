@@ -68,5 +68,38 @@ def test_refresh_then_logout_flow(client):
     reused = client.post("/api/auth/refresh", json={"refresh_token": refresh_token})
     assert reused.status_code == 401
 
-    logout = client.post("/api/auth/logout", json={"refresh_token": new_tokens["refresh_token"]})
+    logout = client.post(
+        "/api/auth/logout",
+        json={"refresh_token": new_tokens["refresh_token"]},
+        headers={"Authorization": f"Bearer {new_tokens['access_token']}"},
+    )
     assert logout.status_code == 204
+
+
+def test_logout_revokes_the_access_token(client):
+    client.post(
+        "/api/auth/register",
+        json={"email": "rev@example.com", "password": "correct horse battery staple"},
+    )
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "rev@example.com", "password": "correct horse battery staple"},
+    ).json()
+    headers = {"Authorization": f"Bearer {login['access_token']}"}
+
+    assert client.get("/api/projects", headers=headers).status_code == 200
+
+    logout = client.post(
+        "/api/auth/logout",
+        json={"refresh_token": login["refresh_token"]},
+        headers=headers,
+    )
+    assert logout.status_code == 204
+
+    assert client.get("/api/projects", headers=headers).status_code == 401
+
+
+def test_logout_requires_authentication(client):
+    response = client.post("/api/auth/logout", json={"refresh_token": "whatever"})
+
+    assert response.status_code == 401
