@@ -55,7 +55,7 @@ def _check_non_atomic_columns(table: Table) -> list[SchemaWarning]:
 
 def _check_naming_convention(table: Table) -> list[SchemaWarning]:
     warnings = []
-    if not _SNAKE_CASE_RE.match(table.name):
+    if not all(_SNAKE_CASE_RE.match(part) for part in table.name.split(".")):
         warnings.append(
             SchemaWarning(
                 code=WarningCode.NON_SNAKE_CASE_IDENTIFIER,

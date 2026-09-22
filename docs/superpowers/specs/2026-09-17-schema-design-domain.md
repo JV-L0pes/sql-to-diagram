@@ -169,6 +169,12 @@ the same `error_body` shape — no new error-handling pattern needed).
    column (any name, e.g. `uuid`) of a compatible type. Ambiguous matches
    (more than one candidate table) are skipped rather than guessed.
    Tagged `source: "inferred"`.
+4. **Schema-qualified names**: when the DDL names a schema
+   (`CREATE TABLE auth.users`), the table is reported as `auth.users` so
+   same-named tables in different schemas stay distinct. A reference to
+   an unqualified `users` resolves to the unique table whose name ends
+   with `.users`; when several schemas match, the foreign key is dropped
+   rather than pointed at the wrong table.
 
 ## Structural Warnings (not formal normalization)
 

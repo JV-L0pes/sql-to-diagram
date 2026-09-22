@@ -31,6 +31,11 @@ def _sqlglot_dialect(dialect: SqlDialect) -> str:
     return _SQLGLOT_DIALECT_NAMES.get(dialect, dialect.value)
 
 
+def _qualified_name(table_expr: exp.Table) -> str:
+    """Keep the schema qualifier so same-named tables in different schemas stay distinct."""
+    return f"{table_expr.db}.{table_expr.name}" if table_expr.db else table_expr.name
+
+
 def parse_sql(sql: str, dialect: SqlDialect) -> ParsedSql:
     """Parse SQL text once and extract tables plus deduplicated foreign keys."""
     statements = sqlglot.parse(sql, read=_sqlglot_dialect(dialect))
@@ -65,7 +70,7 @@ def _extract_tables(statements: list[exp.Expression | None], dialect: SqlDialect
 
 def _extract_table(create_stmt: exp.Create, dialect: SqlDialect) -> Table:
     schema_expr = create_stmt.this
-    table_name = schema_expr.this.name
+    table_name = _qualified_name(schema_expr.this)
 
     column_defs = [item for item in schema_expr.expressions if isinstance(item, exp.ColumnDef)]
     primary_key_columns = _collect_primary_key_columns(schema_expr)
@@ -148,7 +153,7 @@ def _apply_alter_statements(
     for statement in statements:
         if not isinstance(statement, _ALTER_NODE_TYPES):
             continue
-        table = tables_by_name.get(statement.this.this.name)
+        table = tables_by_name.get(_qualified_name(statement.this))
         if table is None:
             continue
         for action in statement.args.get("actions") or []:
@@ -195,7 +200,7 @@ def _foreign_keys_from_create(
     create_stmt: exp.Create, tables_by_name: dict[str, Table]
 ) -> list[ForeignKeyTuple]:
     results: list[ForeignKeyTuple] = []
-    from_table = create_stmt.this.this.name
+    from_table = _qualified_name(create_stmt.this.this)
 
     # find_all covers named constraints (CONSTRAINT fk_x FOREIGN KEY ...), which sqlglot
     # wraps in exp.Constraint, as well as plain table-level FOREIGN KEY clauses.
@@ -227,7 +232,7 @@ def _foreign_keys_from_alter(
 ) -> list[ForeignKeyTuple]:
     """Extract FKs added via ALTER TABLE, including inline REFERENCES on ADD COLUMN."""
     results: list[ForeignKeyTuple] = []
-    from_table = alter_stmt.this.this.name
+    from_table = _qualified_name(alter_stmt.this)
 
     for action in alter_stmt.args.get("actions") or []:
         for fk in action.find_all(exp.ForeignKey):
@@ -261,14 +266,25 @@ def _resolve_foreign_key(
 ) -> list[ForeignKeyTuple]:
     target = reference.this
     if isinstance(target, exp.Schema):
-        to_table = target.this.name
+        target_table_expr = target.this
         to_columns = [column.name for column in target.expressions]
     else:
-        to_table = target.name
+        target_table_expr = target
         to_columns = []
+    to_table = _qualified_name(target_table_expr)
+
+    target_table = tables_by_name.get(to_table)
+    if target_table is None and "." not in to_table:
+        # An unqualified reference may point at a schema-qualified table.
+        matches = [table for name, table in tables_by_name.items() if name.endswith(f".{to_table}")]
+        if len(matches) > 1:
+            return []  # ambiguous across schemas: drop rather than point at the wrong table
+        if matches:
+            target_table = matches[0]
+            to_table = target_table.name
 
     if not to_columns:
-        to_columns = _single_primary_key_columns(tables_by_name.get(to_table))
+        to_columns = _single_primary_key_columns(target_table)
         if not to_columns:
             return []
 
