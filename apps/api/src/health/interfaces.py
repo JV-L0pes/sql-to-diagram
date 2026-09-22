@@ -16,8 +16,8 @@ class HealthResponse(BaseModel):
     db: str
 
 
-@router.get("/health")
-def get_health(db: Session = Depends(get_db)):  # noqa: B008
+@router.get("/health", responses={503: {"description": "Database unavailable"}})
+def get_health(db: Session = Depends(get_db)) -> HealthResponse:  # noqa: B008
     try:
         db.execute(text("SELECT 1"))
     except SQLAlchemyError:
