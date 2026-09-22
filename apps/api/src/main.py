@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="SQL to Diagram API")
+    app = FastAPI(title="Schemio API")
 
     app.add_middleware(
         CORSMiddleware,

@@ -17,10 +17,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@sql-to-diagram/api-client':
+      '@schemio/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
-      '@sql-to-diagram/ui':
+      '@schemio/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       react:

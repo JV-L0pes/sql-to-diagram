@@ -16,7 +16,7 @@ describe('HomePage', () => {
   it('renders the foundation heading', () => {
     render(<HomePage />)
     expect(
-      screen.getByRole('heading', { name: /sql to diagram — foundation/i }),
+      screen.getByRole('heading', { name: /schemio — foundation/i }),
     ).toBeInTheDocument()
   })
 

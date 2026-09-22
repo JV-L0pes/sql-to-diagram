@@ -1,12 +1,12 @@
 {
-  "name": "sql-to-diagram",
+  "name": "schemio",
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@9.12.0",
   "scripts": {
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
-    "test": "pnpm --filter web test && pnpm --filter @sql-to-diagram/ui test",
+    "test": "pnpm --filter web test && pnpm --filter @schemio/ui test",
     "lint": "biome check . && pnpm --filter web lint"
   },
   "devDependencies": {

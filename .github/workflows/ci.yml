@@ -19,7 +19,7 @@ jobs:
       - run: pnpm exec biome check .
       - run: pnpm --filter web lint
       - run: pnpm --filter web test
-      - run: pnpm --filter @sql-to-diagram/ui test
+      - run: pnpm --filter @schemio/ui test
       - run: pnpm --filter web build
 
   api:

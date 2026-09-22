@@ -1,5 +1,5 @@
-import { getHealth } from '@sql-to-diagram/api-client'
-import { Placeholder } from '@sql-to-diagram/ui'
+import { getHealth } from '@schemio/api-client'
+import { Placeholder } from '@schemio/ui'
 import { useEffect, useState } from 'react'
 
 export function HomePage() {
@@ -13,7 +13,7 @@ export function HomePage() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-2">
-      <h1 className="text-2xl font-bold">SQL to Diagram — Foundation</h1>
+      <h1 className="text-2xl font-bold">Schemio — Foundation</h1>
       <Placeholder label="packages/ui is linked" />
       <p>api: {apiStatus}</p>
     </main>

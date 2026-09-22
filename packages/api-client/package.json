@@ -1,5 +1,5 @@
 {
-  "name": "@sql-to-diagram/api-client",
+  "name": "@schemio/api-client",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -1,5 +1,5 @@
 {
-  "name": "@sql-to-diagram/ui",
+  "name": "@schemio/ui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
