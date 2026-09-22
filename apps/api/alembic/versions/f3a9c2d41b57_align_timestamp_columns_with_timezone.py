@@ -25,8 +25,15 @@ _TABLES = {
 }
 
 
+def _is_sqlite() -> bool:
+    return op.get_bind().dialect.name == "sqlite"
+
+
 def upgrade() -> None:
     """Store timestamps as UTC-aware (TIMESTAMP WITH TIME ZONE)."""
+    if _is_sqlite():
+        # SQLite stores datetimes as naive text and has no ALTER COLUMN; nothing to do.
+        return
     for table, columns in _TABLES.items():
         for column in columns:
             op.alter_column(
@@ -40,6 +47,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert timestamps to naive UTC."""
+    if _is_sqlite():
+        return
     for table, columns in _TABLES.items():
         for column in columns:
             op.alter_column(

@@ -229,3 +229,52 @@ def test_alter_table_add_column_with_inline_reference_is_extracted():
     ALTER TABLE posts ADD COLUMN user_id INTEGER REFERENCES users;
     """
     assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_from_named_table_constraint():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      CONSTRAINT fk_posts_user FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    """
+    assert extract_foreign_keys(sql, SqlDialect.MYSQL) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_tables_reads_named_composite_primary_key():
+    sql = """
+    CREATE TABLE order_items (
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      CONSTRAINT pk_order_items PRIMARY KEY (order_id, product_id)
+    );
+    """
+    tables = extract_tables(sql, SqlDialect.MYSQL)
+
+    assert tables[0].find_column("order_id").primary_key is True
+    assert tables[0].find_column("product_id").primary_key is True
+
+
+def test_extract_tables_reads_named_composite_unique_constraint():
+    sql = """
+    CREATE TABLE enrollments (
+      id SERIAL PRIMARY KEY,
+      student_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      CONSTRAINT uq_enrollments UNIQUE (student_id, course_id)
+    );
+    """
+    tables = extract_tables(sql, SqlDialect.MYSQL)
+
+    assert tables[0].unique_constraints == [("student_id", "course_id")]
+
+
+def test_extract_tables_reads_mssql_clustered_primary_key():
+    sql = (
+        "CREATE TABLE users (id INT NOT NULL, CONSTRAINT PK_users PRIMARY KEY CLUSTERED (id ASC));"
+    )
+    tables = extract_tables(sql, SqlDialect.MSSQL)
+
+    assert tables[0].find_column("id").primary_key is True

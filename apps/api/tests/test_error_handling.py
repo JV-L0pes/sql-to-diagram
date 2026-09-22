@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -78,3 +79,15 @@ def test_validation_error_uses_the_shared_error_body_without_echoing_input(clien
     assert body["error"]["code"] == "validation_error"
     assert "not-an-email" not in json.dumps(body)
     assert "short" not in json.dumps(body)
+
+
+def test_validation_error_log_never_contains_the_submitted_password(client, caplog):
+    oversized_password = "SuperSecretPassword" * 10  # > 128 chars -> validation failure
+    with caplog.at_level(logging.INFO, logger="src.main"):
+        response = client.post(
+            "/api/auth/register",
+            json={"email": "ok@example.com", "password": oversized_password},
+        )
+
+    assert response.status_code == 422
+    assert oversized_password not in caplog.text

@@ -40,6 +40,8 @@ def parse_schema(request: ParseSchemaRequest) -> ParseSchemaResponse:
 
     try:
         result = parse_sql_schema(request.sql, dialect)
+    except RecursionError:
+        return _invalid_sql("SQL nesting is too deep.")
     except (SqlglotError, ValueError) as exc:
         return _invalid_sql(str(exc))
 

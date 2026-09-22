@@ -36,8 +36,12 @@ def create_app() -> FastAPI:
     async def handle_validation_error(
         _request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        # Logged server-side only; never echo submitted values (may contain passwords).
-        logger.info("request validation failed: %s", exc.errors())
+        # Log structural fields only: exc.errors() includes the submitted input, which
+        # may contain passwords or tokens. Never write those to logs.
+        logger.info(
+            "request validation failed: %s",
+            [{"loc": error.get("loc"), "type": error.get("type")} for error in exc.errors()],
+        )
         return JSONResponse(
             status_code=422,
             content=error_body("validation_error", "Request validation failed"),

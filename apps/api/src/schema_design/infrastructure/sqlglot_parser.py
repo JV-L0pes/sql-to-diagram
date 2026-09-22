@@ -68,8 +68,8 @@ def _extract_table(create_stmt: exp.Create, dialect: SqlDialect) -> Table:
     table_name = schema_expr.this.name
 
     column_defs = [item for item in schema_expr.expressions if isinstance(item, exp.ColumnDef)]
-    primary_key_columns = _collect_primary_key_columns(schema_expr.expressions)
-    single_unique, composite_unique = _collect_unique_constraints(schema_expr.expressions)
+    primary_key_columns = _collect_primary_key_columns(schema_expr)
+    single_unique, composite_unique = _collect_unique_constraints(schema_expr)
 
     columns = [
         _extract_column(column_def, dialect, primary_key_columns, single_unique)
@@ -78,21 +78,26 @@ def _extract_table(create_stmt: exp.Create, dialect: SqlDialect) -> Table:
     return Table(name=table_name, columns=columns, unique_constraints=composite_unique)
 
 
-def _collect_primary_key_columns(expressions: list[exp.Expression]) -> set[str]:
+def _collect_primary_key_columns(schema_expr: exp.Schema) -> set[str]:
     names: set[str] = set()
-    for item in expressions:
-        if isinstance(item, exp.PrimaryKey):
-            names.update(column.name for column in item.expressions)
+    for primary_key in schema_expr.find_all(exp.PrimaryKey):
+        names.update(column.name for column in primary_key.expressions)
+    for constraint in schema_expr.find_all(exp.Constraint):
+        # MSSQL "CONSTRAINT pk PRIMARY KEY CLUSTERED (col ASC)": sqlglot moves the
+        # columns out of PrimaryKey into a ClusteredColumnConstraint with Ordered nodes.
+        if constraint.find(exp.PrimaryKeyColumnConstraint) is not None:
+            names.update(ordered.this.name for ordered in constraint.find_all(exp.Ordered))
     return names
 
 
 def _collect_unique_constraints(
-    expressions: list[exp.Expression],
+    schema_expr: exp.Schema,
 ) -> tuple[set[str], list[tuple[str, ...]]]:
     single: set[str] = set()
     composite: list[tuple[str, ...]] = []
-    for item in expressions:
-        if isinstance(item, exp.UniqueColumnConstraint) and isinstance(item.this, exp.Schema):
+    for item in schema_expr.find_all(exp.UniqueColumnConstraint):
+        # Inline column-level UNIQUE has no Schema; only table-level constraints count here.
+        if isinstance(item.this, exp.Schema):
             names = tuple(column.name for column in item.this.expressions)
             if len(names) == 1:
                 single.add(names[0])
@@ -192,27 +197,28 @@ def _foreign_keys_from_create(
     results: list[ForeignKeyTuple] = []
     from_table = create_stmt.this.this.name
 
-    for item in create_stmt.this.expressions:
-        if isinstance(item, exp.ForeignKey):
-            results.extend(
-                _resolve_foreign_key(
-                    from_table,
-                    [column.name for column in item.expressions],
-                    item.args["reference"],
-                    tables_by_name,
-                )
+    # find_all covers named constraints (CONSTRAINT fk_x FOREIGN KEY ...), which sqlglot
+    # wraps in exp.Constraint, as well as plain table-level FOREIGN KEY clauses.
+    for foreign_key in create_stmt.this.find_all(exp.ForeignKey):
+        results.extend(
+            _resolve_foreign_key(
+                from_table,
+                [column.name for column in foreign_key.expressions],
+                foreign_key.args["reference"],
+                tables_by_name,
             )
-        elif isinstance(item, exp.ColumnDef):
-            for constraint in item.constraints:
-                if isinstance(constraint.kind, exp.Reference):
-                    results.extend(
-                        _resolve_foreign_key(
-                            from_table,
-                            [item.this.name],
-                            constraint.kind,
-                            tables_by_name,
-                        )
+        )
+    for column_def in create_stmt.this.find_all(exp.ColumnDef):
+        for constraint in column_def.constraints:
+            if isinstance(constraint.kind, exp.Reference):
+                results.extend(
+                    _resolve_foreign_key(
+                        from_table,
+                        [column_def.this.name],
+                        constraint.kind,
+                        tables_by_name,
                     )
+                )
     return results
 
 

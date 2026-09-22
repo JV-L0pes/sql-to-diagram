@@ -93,3 +93,12 @@ def test_parse_endpoint_rejects_oversized_sql(client):
     response = client.post("/api/schema/parse", json=payload)
 
     assert response.status_code == 422
+
+
+def test_parse_endpoint_returns_400_for_deeply_nested_sql(client):
+    payload = {"sql": f"SELECT {'(' * 100}1{')' * 100};", "dialect": "postgres"}
+
+    response = client.post("/api/schema/parse", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "invalid_sql"

@@ -13,3 +13,4 @@ coverage/
 
 # superpowers subagent-driven-development scratch workspace
 .superpowers/
+*.db
