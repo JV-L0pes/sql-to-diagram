@@ -1,6 +1,8 @@
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.identity.domain.errors import EmailAlreadyRegisteredError
 from src.identity.infrastructure.user_repository import UserRepository
 from src.shared_kernel.db import Base
 
@@ -40,3 +42,12 @@ def test_get_by_id_returns_the_matching_user():
 
     assert found is not None
     assert found.id == created.id
+
+
+def test_duplicate_email_create_raises_domain_error():
+    session = _make_session()
+    repo = UserRepository(session)
+    repo.create(id="u1", email="a@example.com", password_hash="hash")
+
+    with pytest.raises(EmailAlreadyRegisteredError):
+        repo.create(id="u2", email="a@example.com", password_hash="hash")

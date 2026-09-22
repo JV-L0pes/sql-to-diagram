@@ -217,7 +217,11 @@ def _find_matching_table(column_name: str, table_names: list[str], exclude: str)
     if prefix.endswith("y"):
         candidates.add(f"{prefix[:-1]}ies")
 
-    matches = [name for name in table_names if name != exclude and name.lower() in candidates]
+    matches = [
+        name
+        for name in table_names
+        if name != exclude and name.rsplit(".", 1)[-1].lower() in candidates
+    ]
     # Ambiguous matches (>1) are skipped rather than guessed.
     if len(matches) != 1:
         return None

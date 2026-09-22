@@ -95,3 +95,11 @@ def test_warns_on_non_snake_case_identifier():
 
     codes = [w.code for w in warnings]
     assert WarningCode.NON_SNAKE_CASE_IDENTIFIER in codes
+
+
+def test_schema_qualified_table_name_does_not_trigger_naming_warning():
+    users = Table(name="public.users", columns=[Column("id", "INTEGER", False, True)])
+
+    warnings = validate_structure([users], [])
+
+    assert all(w.code != WarningCode.NON_SNAKE_CASE_IDENTIFIER for w in warnings)

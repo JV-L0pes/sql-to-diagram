@@ -278,3 +278,53 @@ def test_extract_tables_reads_mssql_clustered_primary_key():
     tables = extract_tables(sql, SqlDialect.MSSQL)
 
     assert tables[0].find_column("id").primary_key is True
+
+
+def test_tables_in_different_schemas_stay_distinct():
+    sql = """
+    CREATE TABLE public.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE auth.users (id SERIAL PRIMARY KEY);
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+
+    assert {t.name for t in tables} == {"public.users", "auth.users"}
+
+
+def test_foreign_key_with_qualified_reference_resolves_exactly():
+    sql = """
+    CREATE TABLE auth.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES auth.users(id));
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [
+        ("posts", "user_id", "auth.users", "id")
+    ]
+
+
+def test_unqualified_reference_resolves_to_the_unique_suffix_match():
+    sql = """
+    CREATE TABLE auth.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id));
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [
+        ("posts", "user_id", "auth.users", "id")
+    ]
+
+
+def test_ambiguous_unqualified_reference_is_dropped():
+    sql = """
+    CREATE TABLE public.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE auth.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id));
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []
+
+
+def test_qualified_table_names_survive_alter_table_foreign_keys():
+    sql = """
+    CREATE TABLE auth.users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL);
+    ALTER TABLE posts ADD CONSTRAINT fk FOREIGN KEY (user_id) REFERENCES auth.users(id);
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [
+        ("posts", "user_id", "auth.users", "id")
+    ]

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
-from sqlalchemy import and_
+from sqlalchemy import and_, delete
 from sqlalchemy.orm import Session
 
 from src.identity.infrastructure.models import RefreshTokenModel
@@ -55,6 +55,10 @@ class RefreshTokenRepository:
         if model is not None:
             model.revoked_at = utc_now()
             self._session.commit()
+
+    def delete_expired(self, now: datetime) -> None:
+        self._session.execute(delete(RefreshTokenModel).where(RefreshTokenModel.expires_at < now))
+        self._session.commit()
 
     def rotate(
         self,

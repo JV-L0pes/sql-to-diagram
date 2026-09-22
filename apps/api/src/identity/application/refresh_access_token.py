@@ -38,4 +38,6 @@ class RefreshAccessToken:
             raise InvalidRefreshTokenError()
 
         access_token = self._jwt_service.create_access_token(user_id)
+        # Opportunistic cleanup keeps the token table bounded without a scheduler.
+        self._refresh_token_repository.delete_expired(datetime.now(UTC))
         return TokenPair(access_token=access_token, refresh_token=new_raw_token)

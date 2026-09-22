@@ -113,6 +113,13 @@ pnpm --filter web test
 cd apps/api && pytest
 ```
 
+### API rate limits
+
+Auth and parsing endpoints are rate-limited per client IP (fixed 60s window):
+login 10, register 5, refresh 20, `POST /api/schema/parse` 30. Counters live
+in the same database (Postgres/Neon) — no Redis or extra service. Exceeding a
+limit returns `429` with the standard error envelope and a `Retry-After` header.
+
 ### Updating the generated API client
 
 `packages/api-client` is generated from `apps/api`'s real OpenAPI schema and must never drift from it

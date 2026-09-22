@@ -342,3 +342,33 @@ def test_infers_when_types_differ_only_by_unsigned_modifier():
     relationships = detect_inferred_relationships([users, posts], [], [])
 
     assert len(relationships) == 1
+
+
+def test_inference_matches_schema_qualified_tables_by_last_segment():
+    users = _table("public.users", [Column("id", "INT", False, True)])
+    posts = _table(
+        "posts",
+        [
+            Column("id", "INT", False, True),
+            Column("user_id", "INT", False, False),
+        ],
+    )
+
+    relationships = detect_inferred_relationships([users, posts], [], [])
+
+    assert len(relationships) == 1
+    assert relationships[0].to_table == "public.users"
+
+
+def test_inference_is_skipped_when_multiple_schemas_share_the_table_name():
+    public_users = _table("public.users", [Column("id", "INT", False, True)])
+    auth_users = _table("auth.users", [Column("id", "INT", False, True)])
+    posts = _table(
+        "posts",
+        [
+            Column("id", "INT", False, True),
+            Column("user_id", "INT", False, False),
+        ],
+    )
+
+    assert detect_inferred_relationships([public_users, auth_users, posts], [], []) == []
