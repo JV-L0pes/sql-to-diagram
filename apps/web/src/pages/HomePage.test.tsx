@@ -15,9 +15,7 @@ describe('HomePage', () => {
 
   it('renders the foundation heading', () => {
     render(<HomePage />)
-    expect(
-      screen.getByRole('heading', { name: /schemio — foundation/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /schemio — foundation/i })).toBeInTheDocument()
   })
 
   it('fetches and displays the API health status', async () => {
