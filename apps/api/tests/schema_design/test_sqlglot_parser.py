@@ -159,3 +159,122 @@ def test_extract_tables_works_across_all_dialects(dialect):
     assert id_col.primary_key is True
     email_col = users.find_column("email")
     assert email_col.nullable is False
+
+
+def test_extract_foreign_keys_resolves_bare_reference_to_target_primary_key():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users);
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_resolves_table_level_reference_without_column_list():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users
+    );
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_raises_value_error_for_bare_reference_to_composite_pk():
+    sql = """
+    CREATE TABLE orders (a INTEGER, b INTEGER, PRIMARY KEY (a, b));
+    CREATE TABLE items (id SERIAL PRIMARY KEY, order_id INTEGER REFERENCES orders);
+    """
+    with pytest.raises(ValueError):
+        extract_foreign_keys(sql, SqlDialect.POSTGRES)
+
+
+def test_extract_foreign_keys_skips_bare_reference_to_unknown_table():
+    sql = "CREATE TABLE posts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES missing_table);"
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == []
+
+
+def test_alter_table_add_column_is_merged_into_the_table():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    ALTER TABLE users ADD COLUMN email VARCHAR(255) NOT NULL;
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("email") is not None
+
+
+def test_alter_table_add_primary_key_marks_column():
+    sql = """
+    CREATE TABLE users (id SERIAL);
+    ALTER TABLE users ADD PRIMARY KEY (id);
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("id").primary_key is True
+
+
+def test_alter_table_add_unique_marks_column():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255));
+    ALTER TABLE users ADD CONSTRAINT users_email_key UNIQUE (email);
+    """
+    tables = extract_tables(sql, SqlDialect.POSTGRES)
+    assert tables[0].find_column("email").unique is True
+
+
+def test_alter_table_add_column_with_inline_reference_is_extracted():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (id SERIAL PRIMARY KEY);
+    ALTER TABLE posts ADD COLUMN user_id INTEGER REFERENCES users;
+    """
+    assert extract_foreign_keys(sql, SqlDialect.POSTGRES) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_foreign_keys_from_named_table_constraint():
+    sql = """
+    CREATE TABLE users (id SERIAL PRIMARY KEY);
+    CREATE TABLE posts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL,
+      CONSTRAINT fk_posts_user FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    """
+    assert extract_foreign_keys(sql, SqlDialect.MYSQL) == [("posts", "user_id", "users", "id")]
+
+
+def test_extract_tables_reads_named_composite_primary_key():
+    sql = """
+    CREATE TABLE order_items (
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      CONSTRAINT pk_order_items PRIMARY KEY (order_id, product_id)
+    );
+    """
+    tables = extract_tables(sql, SqlDialect.MYSQL)
+
+    assert tables[0].find_column("order_id").primary_key is True
+    assert tables[0].find_column("product_id").primary_key is True
+
+
+def test_extract_tables_reads_named_composite_unique_constraint():
+    sql = """
+    CREATE TABLE enrollments (
+      id SERIAL PRIMARY KEY,
+      student_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      CONSTRAINT uq_enrollments UNIQUE (student_id, course_id)
+    );
+    """
+    tables = extract_tables(sql, SqlDialect.MYSQL)
+
+    assert tables[0].unique_constraints == [("student_id", "course_id")]
+
+
+def test_extract_tables_reads_mssql_clustered_primary_key():
+    sql = (
+        "CREATE TABLE users (id INT NOT NULL, CONSTRAINT PK_users PRIMARY KEY CLUSTERED (id ASC));"
+    )
+    tables = extract_tables(sql, SqlDialect.MSSQL)
+
+    assert tables[0].find_column("id").primary_key is True

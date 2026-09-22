@@ -20,3 +20,16 @@ def test_relationship_holds_all_fields():
     assert rel.to_table == "users"
     assert rel.type == RelationshipType.MANY_TO_ONE
     assert rel.source == RelationshipSource.EXPLICIT
+
+
+def test_relationship_via_table_defaults_to_none():
+    rel = Relationship(
+        "posts",
+        "user_id",
+        "users",
+        "id",
+        RelationshipType.MANY_TO_ONE,
+        RelationshipSource.EXPLICIT,
+    )
+
+    assert rel.via_table is None

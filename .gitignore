@@ -7,10 +7,10 @@ __pycache__/
 .venv/
 *.egg-info/
 apps/api/.pytest_cache/
-packages/api-client/openapi.json
 coverage/
 .DS_Store
 .vercel
 
 # superpowers subagent-driven-development scratch workspace
 .superpowers/
+*.db

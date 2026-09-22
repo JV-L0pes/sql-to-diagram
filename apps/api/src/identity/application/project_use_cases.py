@@ -19,8 +19,8 @@ class ListProjects:
     def __init__(self, project_repository: ProjectRepository):
         self._project_repository = project_repository
 
-    def execute(self, user_id: str) -> list[Project]:
-        return self._project_repository.list_by_user(user_id)
+    def execute(self, user_id: str, limit: int = 50, offset: int = 0) -> list[Project]:
+        return self._project_repository.list_by_user(user_id, limit=limit, offset=offset)
 
 
 class GetProject:

@@ -157,6 +157,19 @@ export interface components {
             nullable: boolean;
             /** Primary Key */
             primary_key: boolean;
+            /** Unique */
+            unique: boolean;
+        };
+        /** ErrorDetail */
+        ErrorDetail: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+        };
+        /** ErrorResponse */
+        ErrorResponse: {
+            error: components["schemas"]["ErrorDetail"];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -172,7 +185,10 @@ export interface components {
         };
         /** LoginRequest */
         LoginRequest: {
-            /** Email */
+            /**
+             * Email
+             * Format: email
+             */
             email: string;
             /** Password */
             password: string;
@@ -258,7 +274,10 @@ export interface components {
         };
         /** RegisterRequest */
         RegisterRequest: {
-            /** Email */
+            /**
+             * Email
+             * Format: email
+             */
             email: string;
             /** Password */
             password: string;
@@ -280,11 +299,21 @@ export interface components {
             to_table: string;
             /** To Column */
             to_column: string;
-            /** Type */
-            type: string;
-            /** Source */
-            source: string;
+            type: components["schemas"]["RelationshipType"];
+            source: components["schemas"]["RelationshipSource"];
+            /** Via Table */
+            via_table: string | null;
         };
+        /**
+         * RelationshipSource
+         * @enum {string}
+         */
+        RelationshipSource: "explicit" | "inferred";
+        /**
+         * RelationshipType
+         * @enum {string}
+         */
+        RelationshipType: "ONE_TO_ONE" | "ONE_TO_MANY" | "MANY_TO_ONE" | "MANY_TO_MANY";
         /** TableResponse */
         TableResponse: {
             /** Name */
@@ -317,10 +346,14 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * WarningCode
+         * @enum {string}
+         */
+        WarningCode: "missing_primary_key" | "non_atomic_column_type" | "nullable_foreign_key" | "non_snake_case_identifier";
         /** WarningResponse */
         WarningResponse: {
-            /** Code */
-            code: string;
+            code: components["schemas"]["WarningCode"];
             /** Table */
             table: string;
             /** Message */
@@ -351,6 +384,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
+                };
+            };
+            /** @description Database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -520,7 +562,10 @@ export interface operations {
     };
     list_projects_api_projects_get: {
         parameters: {
-            query?: never;
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -534,6 +579,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectSummaryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

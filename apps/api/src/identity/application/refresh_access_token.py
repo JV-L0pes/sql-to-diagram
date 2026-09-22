@@ -6,7 +6,10 @@ from datetime import UTC, datetime, timedelta
 from src.identity.application.authenticate_user import TokenPair
 from src.identity.domain.errors import InvalidRefreshTokenError
 from src.identity.infrastructure.jwt_service import JwtService
-from src.identity.infrastructure.refresh_token_repository import RefreshTokenRepository
+from src.identity.infrastructure.refresh_token_repository import (
+    RefreshTokenRepository,
+    RotationOutcome,
+)
 
 
 class RefreshAccessToken:
@@ -21,21 +24,18 @@ class RefreshAccessToken:
         self._refresh_token_expiry_days = refresh_token_expiry_days
 
     def execute(self, raw_refresh_token: str) -> TokenPair:
-        token_hash = hashlib.sha256(raw_refresh_token.encode()).hexdigest()
-        record = self._refresh_token_repository.get_valid_by_hash(token_hash)
-        if record is None:
-            raise InvalidRefreshTokenError()
-
-        self._refresh_token_repository.revoke(record.id)
-
-        access_token = self._jwt_service.create_access_token(record.user_id)
+        old_token_hash = hashlib.sha256(raw_refresh_token.encode()).hexdigest()
         new_raw_token = secrets.token_urlsafe(32)
         new_token_hash = hashlib.sha256(new_raw_token.encode()).hexdigest()
-        expires_at = datetime.now(UTC) + timedelta(days=self._refresh_token_expiry_days)
-        self._refresh_token_repository.create(
-            id=str(uuid.uuid4()),
-            user_id=record.user_id,
-            token_hash=new_token_hash,
-            expires_at=expires_at,
+
+        outcome, user_id = self._refresh_token_repository.rotate(
+            old_token_hash=old_token_hash,
+            new_id=str(uuid.uuid4()),
+            new_token_hash=new_token_hash,
+            new_expires_at=datetime.now(UTC) + timedelta(days=self._refresh_token_expiry_days),
         )
+        if outcome is not RotationOutcome.ROTATED or user_id is None:
+            raise InvalidRefreshTokenError()
+
+        access_token = self._jwt_service.create_access_token(user_id)
         return TokenPair(access_token=access_token, refresh_token=new_raw_token)

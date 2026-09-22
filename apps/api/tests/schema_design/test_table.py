@@ -13,3 +13,10 @@ def test_table_find_column_returns_none_when_missing():
     table = Table(name="users", columns=[])
 
     assert table.find_column("missing") is None
+
+
+def test_column_unique_defaults_to_false_and_table_starts_without_unique_constraints():
+    table = Table(name="users", columns=[Column("id", "INTEGER", False, True)])
+
+    assert table.columns[0].unique is False
+    assert table.unique_constraints == []

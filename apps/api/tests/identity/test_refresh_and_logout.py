@@ -76,3 +76,41 @@ def test_logout_is_a_no_op_for_an_unknown_token():
     repo = RefreshTokenRepository(session)
 
     Logout(repo).execute("not-a-real-token")  # must not raise
+
+
+def test_reusing_a_revoked_token_revokes_the_whole_token_family():
+    session = _make_session()
+    repo = RefreshTokenRepository(session)
+    use_case = RefreshAccessToken(repo, JwtService(secret="test-secret"))
+    first = _issue_raw_token(repo)
+    other_session_token = _issue_raw_token(repo)
+    rotated = use_case.execute(first).refresh_token
+
+    with pytest.raises(InvalidRefreshTokenError):
+        use_case.execute(first)  # replay of the already-rotated token
+
+    # every active token for that user was revoked as a precaution
+    with pytest.raises(InvalidRefreshTokenError):
+        use_case.execute(rotated)
+    with pytest.raises(InvalidRefreshTokenError):
+        use_case.execute(other_session_token)
+
+
+def test_rotation_rejects_an_expired_token():
+    import uuid
+    from datetime import datetime, timedelta
+
+    session = _make_session()
+    repo = RefreshTokenRepository(session)
+    raw = "expired-token"
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()
+    repo.create(
+        id=str(uuid.uuid4()),
+        user_id="u1",
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) - timedelta(days=1),
+    )
+    use_case = RefreshAccessToken(repo, JwtService(secret="test-secret"))
+
+    with pytest.raises(InvalidRefreshTokenError):
+        use_case.execute(raw)

@@ -1,3 +1,6 @@
+import json
+import logging
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -55,3 +58,36 @@ def test_unhandled_exception_returns_shared_error_body() -> None:
     assert response.json() == {
         "error": {"code": "internal_error", "message": "Internal Server Error"}
     }
+
+
+def test_http_exception_uses_the_shared_error_body(client):
+    response = client.get("/api/projects")  # no bearer token -> HTTPBearer 401
+
+    assert response.status_code == 401
+    body = response.json()
+    assert body["error"]["code"] == "http_401"
+    assert "detail" not in body
+
+
+def test_validation_error_uses_the_shared_error_body_without_echoing_input(client):
+    response = client.post(
+        "/api/auth/register", json={"email": "not-an-email", "password": "short"}
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "validation_error"
+    assert "not-an-email" not in json.dumps(body)
+    assert "short" not in json.dumps(body)
+
+
+def test_validation_error_log_never_contains_the_submitted_password(client, caplog):
+    oversized_password = "SuperSecretPassword" * 10  # > 128 chars -> validation failure
+    with caplog.at_level(logging.INFO, logger="src.main"):
+        response = client.post(
+            "/api/auth/register",
+            json={"email": "ok@example.com", "password": oversized_password},
+        )
+
+    assert response.status_code == 422
+    assert oversized_password not in caplog.text

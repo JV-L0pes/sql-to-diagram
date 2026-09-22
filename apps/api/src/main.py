@@ -1,8 +1,10 @@
 import logging
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.health.interfaces import router as health_router
 from src.identity.interfaces.auth_router import router as auth_router
@@ -29,6 +31,30 @@ def create_app() -> FastAPI:
     app.include_router(schema_design_router)
     app.include_router(auth_router)
     app.include_router(projects_router)
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(
+        _request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        # Log structural fields only: exc.errors() includes the submitted input, which
+        # may contain passwords or tokens. Never write those to logs.
+        logger.info(
+            "request validation failed: %s",
+            [{"loc": error.get("loc"), "type": error.get("type")} for error in exc.errors()],
+        )
+        return JSONResponse(
+            status_code=422,
+            content=error_body("validation_error", "Request validation failed"),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_exception(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        detail = exc.detail if isinstance(exc.detail, str) else "Request failed"
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=error_body(f"http_{exc.status_code}", detail),
+            headers=getattr(exc, "headers", None),
+        )
 
     @app.exception_handler(Exception)
     async def handle_unhandled_exception(_request: Request, exc: Exception) -> JSONResponse:

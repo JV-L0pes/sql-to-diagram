@@ -1,8 +1,9 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.shared_kernel.datetimes import utc_now
 from src.shared_kernel.db import Base
 
 
@@ -12,7 +13,7 @@ class UserModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     projects: Mapped[list["ProjectModel"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
@@ -32,8 +33,8 @@ class ProjectModel(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     sql: Mapped[str] = mapped_column(Text, nullable=False)
     dialect: Mapped[str] = mapped_column(String(20), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
-    updated_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["UserModel"] = relationship(back_populates="projects")
 
@@ -46,8 +47,8 @@ class RefreshTokenModel(Base):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
-    expires_at: Mapped[datetime] = mapped_column(nullable=False)
-    revoked_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    created_at: Mapped[datetime] = mapped_column(default=lambda: datetime.now(UTC))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     user: Mapped["UserModel"] = relationship(back_populates="refresh_tokens")

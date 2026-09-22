@@ -147,23 +147,28 @@ the same `error_body` shape — no new error-handling pattern needed).
 1. **Explicit**: a declared `FOREIGN KEY (col) REFERENCES table(col)` —
    always `source: "explicit"`. Cardinality (`ONE_TO_ONE` / `ONE_TO_MANY`
    / `MANY_TO_ONE`) is derived from whether the FK column and the
-   referenced column are each individually unique (PK or UNIQUE
-   constraint), same logic as the legacy parser's
-   `determineRelationshipType`, ported and tested.
+   referenced column are each individually unique (a single-column PK or
+   a UNIQUE constraint; a member of a composite PK is NOT individually
+   unique) — ported from the legacy parser's
+   `determineRelationshipType` and hardened against composite keys.
 2. **Many-to-many via junction table**: a table is classified as a
-   junction when its primary key is exactly the union of exactly two
-   foreign key columns and it has no more than a couple of incidental
-   columns (e.g. `created_at`) beyond those FKs — ported from the legacy
-   `identifyJunctionTables`/`processManyToManyRelationship` logic. Both
-   directions of the resulting `MANY_TO_MANY` relationship are
-   `source: "explicit"` (the FKs that produce them are explicit).
+   junction when it has exactly two foreign keys pointing at two distinct
+   tables AND its FK columns are either exactly its primary key columns
+   or covered by a table-level UNIQUE constraint (the surrogate-PK
+   junction, e.g. `id` + `UNIQUE (student_id, course_id)`). Two FKs to
+   the same table are a self-reference, not a junction. Both directions
+   of the resulting `MANY_TO_MANY` relationship are `source: "explicit"`
+   (the FKs that produce them are explicit) and carry `via_table` naming
+   the junction table.
 3. **Inferred (naming convention)**: only runs for a column that has NO
    explicit FK, matches the pattern `<singular_or_plural_noun>_id`, and a
    table exists whose name plausibly matches that noun (reusing the
    legacy parser's pluralization heuristics: `+s`, `+es`, trailing-`s`
    removal, `+a`/`+as` for Portuguese-style names already in the legacy
-   code's test fixtures) AND that table has an `id`-named column of a
-   compatible type. Tagged `source: "inferred"`.
+   code's test fixtures) AND that table has exactly one primary-key
+   column (any name, e.g. `uuid`) of a compatible type. Ambiguous matches
+   (more than one candidate table) are skipped rather than guessed.
+   Tagged `source: "inferred"`.
 
 ## Structural Warnings (not formal normalization)
 

@@ -15,7 +15,22 @@ class SqlDialect(StrEnum):
     @classmethod
     def from_string(cls, value: str) -> "SqlDialect":
         normalized = value.strip().lower()
-        for member in cls:
-            if member.value == normalized:
-                return member
+        alias = _ALIASES.get(normalized)
+        if alias is not None:
+            return alias
         raise InvalidDialectError(value)
+
+
+_ALIASES = {
+    "postgres": SqlDialect.POSTGRES,
+    "postgresql": SqlDialect.POSTGRES,
+    "pg": SqlDialect.POSTGRES,
+    "mysql": SqlDialect.MYSQL,
+    "mariadb": SqlDialect.MYSQL,
+    "sqlite": SqlDialect.SQLITE,
+    "sqlite3": SqlDialect.SQLITE,
+    "mssql": SqlDialect.MSSQL,
+    "sqlserver": SqlDialect.MSSQL,
+    "sql_server": SqlDialect.MSSQL,
+    "tsql": SqlDialect.MSSQL,
+}
