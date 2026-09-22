@@ -1,5 +1,6 @@
-import reactHooks from 'eslint-plugin-react-hooks'
+import tsParser from '@typescript-eslint/parser'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
+import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
@@ -13,6 +14,7 @@ export default [
       ...jsxA11y.configs.recommended.rules,
     },
     languageOptions: {
+      parser: tsParser,
       parserOptions: {
         ecmaFeatures: { jsx: true },
       },

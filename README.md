@@ -9,12 +9,16 @@ Automatically transform SQL scripts into intuitive and visual entity-relationshi
 
 ## 📌 Status atual | Current status
 
-Este projeto está na fase de **Fundação (Phase 1)**: um monorepo pnpm com um "vertical slice" de health-check
-já funcionando de ponta a ponta (frontend → API → banco de dados, com deploy real). A funcionalidade de
-converter SQL em diagrama ainda não existe — ela é o objetivo da Fase 2.  
-This project is in its **Foundation (Phase 1)** phase: a pnpm monorepo with a health-check vertical slice
-already working end-to-end (frontend → API → database, with a real deployment). The actual SQL-to-diagram
-feature does not exist yet — that is the goal of Phase 2.
+Este projeto está na fase de **Domínios (Fases 2–3)**: o parsing de SQL já funciona de ponta a ponta
+(multi-dialeto: PostgreSQL, MySQL, SQLite, SQL Server), com detecção de tabelas, chaves primárias e
+estrangeiras, relacionamentos (explícitos, inferidos e N:N) e avisos estruturais, tudo exposto via
+`POST /api/schema/parse`. Também já existem autenticação JWT (`/api/auth/*`) e projetos salvos
+(`/api/projects`). A visualização do diagrama é o objetivo da Fase 4.
+This project is in its **Domains (Phases 2–3)** phase: SQL parsing works end-to-end (multi-dialect:
+PostgreSQL, MySQL, SQLite, SQL Server), extracting tables, primary/foreign keys, relationships
+(explicit, inferred, and N:N) and structural warnings through `POST /api/schema/parse`. JWT
+authentication (`/api/auth/*`) and saved projects (`/api/projects`) are also implemented. The
+diagram visualization is the goal of Phase 4.
 
 O roteiro completo (parsing multi-dialeto, autenticação, projetos salvos, exportação, etc.) está documentado
 em `docs/superpowers/specs/`.  
@@ -25,10 +29,16 @@ The full roadmap (multi-dialect SQL parsing, authentication, saved projects, exp
 
 - Monorepo pnpm (`apps/web`, `apps/api`, `packages/ui`, `packages/api-client`)  
   pnpm workspace monorepo (`apps/web`, `apps/api`, `packages/ui`, `packages/api-client`)
-- Frontend em Vite + React que chama um endpoint `/api/health`  
-  Vite + React frontend that calls an `/api/health` endpoint
+- Frontend em Vite + React com health-check e estado de retry  
+  Vite + React frontend with a health check and retry state
 - Backend em FastAPI + SQLAlchemy, com Postgres via Neon  
   FastAPI + SQLAlchemy backend, using Postgres via Neon
+- Parsing de SQL multi-dialeto com relacionamentos e avisos estruturais  
+  Multi-dialect SQL parsing with relationships and structural warnings
+- Autenticação JWT (access + refresh com rotação e detecção de reuso) e projetos salvos  
+  JWT auth (access + refresh with rotation and reuse detection) and saved projects
+- Migrations com Alembic  
+  Alembic migrations
 - Deploy contínuo na Vercel (frontend estático + função Python serverless)  
   Continuous deployment on Vercel (static frontend + Python serverless function)
 - Cliente TypeScript (`packages/api-client`) gerado a partir do schema OpenAPI da API  
@@ -36,12 +46,10 @@ The full roadmap (multi-dialect SQL parsing, authentication, saved projects, exp
 
 ### O que está planejado | What's planned
 
-- Parsing de múltiplos dialetos SQL (PostgreSQL, MySQL, SQL Server) e detecção de chaves primárias/estrangeiras  
-  Multi-dialect SQL parsing (PostgreSQL, MySQL, SQL Server) and primary/foreign key detection
-- Autenticação e projetos salvos  
-  Authentication and saved projects
 - Visualização do diagrama e exportação (PNG/SVG/PDF)  
   Diagram visualization and export (PNG/SVG/PDF)
+- Suporte a schemas múltiplos (namespaces) no parsing  
+  Multi-schema (namespace) support in parsing
 
 Consulte `docs/superpowers/specs/` para os detalhes de design de cada fase.  
 See `docs/superpowers/specs/` for the design details of each phase.
@@ -74,7 +82,19 @@ pnpm install
 cd apps/api && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
 ```
 
-Create `apps/api/.env` with a Neon connection string (see `docs/superpowers/specs/2026-09-16-foundation-design.md`).
+Create `apps/api/.env` with:
+
+```bash
+DATABASE_URL=postgresql://user:pass@host/db
+JWT_SECRET=at-least-32-characters-long-secret
+CORS_ALLOW_ORIGINS=["http://localhost:5173"]
+```
+
+`JWT_SECRET` is required to be at least 32 characters. Then apply the migrations:
+
+```bash
+cd apps/api && alembic upgrade head
+```
 
 ### Run locally
 

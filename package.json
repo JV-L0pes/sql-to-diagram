@@ -7,10 +7,11 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "test": "pnpm --filter web test && pnpm --filter @schemio/ui test",
-    "lint": "biome check . && pnpm --filter web lint"
+    "lint": "biome check . && pnpm --filter web lint && pnpm --filter @schemio/ui lint"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
+    "@typescript-eslint/parser": "^8.70.1",
     "@vercel/config": "^0.7.1"
   }
 }
