@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-# SQL to ER Diagram
+# Schemio
 
 Transforme scripts SQL em diagramas entidade-relacionamento (ER) de forma automática, visual e intuitiva.  
 Automatically transform SQL scripts into intuitive and visual entity-relationship (ER) diagrams.
