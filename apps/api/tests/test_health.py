@@ -19,3 +19,11 @@ def test_health_returns_503_when_database_is_unavailable(client):
 
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "database_unavailable"
+
+
+def test_health_503_error_body_is_documented_in_openapi(client):
+    schema = client.app.openapi()
+    response = schema["paths"]["/api/health"]["get"]["responses"]["503"]
+    ref = response["content"]["application/json"]["schema"]["$ref"]
+
+    assert ref.endswith("/ErrorResponse")

@@ -96,10 +96,6 @@ class RefreshTokenRepository:
         self._session.commit()
         return RotationOutcome.ROTATED, model.user_id
 
-    def revoke_all_for_user(self, user_id: str) -> None:
-        self._revoke_all_for_user_in_transaction(user_id, utc_now())
-        self._session.commit()
-
     def _revoke_all_for_user_in_transaction(self, user_id: str, now: datetime) -> None:
         self._session.query(RefreshTokenModel).filter(
             RefreshTokenModel.user_id == user_id,

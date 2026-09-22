@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from src.shared_kernel.api_schemas import ErrorResponse
 from src.shared_kernel.db import get_db
 from src.shared_kernel.errors import error_body
 
@@ -16,7 +17,10 @@ class HealthResponse(BaseModel):
     db: str
 
 
-@router.get("/health", responses={503: {"description": "Database unavailable"}})
+@router.get(
+    "/health",
+    responses={503: {"model": ErrorResponse, "description": "Database unavailable"}},
+)
 def get_health(db: Session = Depends(get_db)) -> HealthResponse:  # noqa: B008
     try:
         db.execute(text("SELECT 1"))

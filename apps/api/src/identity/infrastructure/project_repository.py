@@ -1,9 +1,8 @@
-from datetime import UTC, datetime
-
 from sqlalchemy.orm import Session
 
 from src.identity.domain.project import Project
 from src.identity.infrastructure.models import ProjectModel
+from src.shared_kernel.datetimes import utc_now
 
 
 class ProjectRepository:
@@ -41,7 +40,7 @@ class ProjectRepository:
         model.name = name
         model.sql = sql
         model.dialect = dialect
-        model.updated_at = datetime.now(UTC)
+        model.updated_at = utc_now()
         self._session.commit()
         self._session.refresh(model)
         return self._to_domain(model)
