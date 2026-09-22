@@ -76,3 +76,28 @@ def test_create_project_rejects_invalid_dialect(client):
     )
 
     assert response.status_code == 422
+
+
+def test_list_projects_supports_limit_and_offset(client):
+    token = _register_and_login(client, email="pagination@example.com")
+    headers = _auth_headers(token)
+    for index in range(3):
+        client.post(
+            "/api/projects",
+            json={"name": f"P{index}", "sql": "...", "dialect": "postgres"},
+            headers=headers,
+        )
+
+    first_page = client.get("/api/projects?limit=2", headers=headers)
+    second_page = client.get("/api/projects?limit=2&offset=2", headers=headers)
+
+    assert len(first_page.json()) == 2
+    assert len(second_page.json()) == 1
+
+
+def test_list_projects_rejects_invalid_pagination(client):
+    token = _register_and_login(client, email="bad-pagination@example.com")
+
+    response = client.get("/api/projects?limit=0", headers=_auth_headers(token))
+
+    assert response.status_code == 422

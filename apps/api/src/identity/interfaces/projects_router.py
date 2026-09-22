@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Query, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,7 @@ from src.identity.application.project_use_cases import (
     UpdateProject,
 )
 from src.identity.domain.errors import ProjectNotFoundError
+from src.identity.domain.project import Project
 from src.identity.infrastructure.project_repository import ProjectRepository
 from src.identity.interfaces.dependencies import get_current_user
 from src.identity.interfaces.schemas import (
@@ -27,9 +30,11 @@ router = APIRouter(prefix="/api/projects", tags=["identity"])
 @router.get("", response_model=list[ProjectSummaryResponse])
 def list_projects(
     user_id: str = Depends(get_current_user),
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
     db: Session = Depends(get_db),  # noqa: B008
 ):
-    projects = ListProjects(ProjectRepository(db)).execute(user_id)
+    projects = ListProjects(ProjectRepository(db)).execute(user_id, limit=limit, offset=offset)
     return [
         ProjectSummaryResponse(id=p.id, name=p.name, dialect=p.dialect, updated_at=p.updated_at)
         for p in projects
@@ -90,7 +95,7 @@ def delete_project(
     return Response(status_code=204)
 
 
-def _to_response(project) -> ProjectResponse:
+def _to_response(project: Project) -> ProjectResponse:
     return ProjectResponse(
         id=project.id,
         name=project.name,

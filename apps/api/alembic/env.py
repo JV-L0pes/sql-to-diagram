@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 
 # Make src importable by adding parent directory to sys.path
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.identity.infrastructure import (
     models,  # noqa: E402,F401  (registers models on Base.metadata)

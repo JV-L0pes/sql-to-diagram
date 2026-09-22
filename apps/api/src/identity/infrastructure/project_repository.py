@@ -17,11 +17,13 @@ class ProjectRepository:
         self._session.refresh(model)
         return self._to_domain(model)
 
-    def list_by_user(self, user_id: str) -> list[Project]:
+    def list_by_user(self, user_id: str, limit: int = 50, offset: int = 0) -> list[Project]:
         models = (
             self._session.query(ProjectModel)
             .filter_by(user_id=user_id)
             .order_by(ProjectModel.created_at)
+            .limit(limit)
+            .offset(offset)
             .all()
         )
         return [self._to_domain(m) for m in models]
