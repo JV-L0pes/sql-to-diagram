@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -28,3 +30,31 @@ class RefreshRequest(BaseModel):
 
 class LogoutRequest(BaseModel):
     refresh_token: str
+
+
+class ProjectCreateRequest(BaseModel):
+    name: str
+    sql: str
+    dialect: str
+
+
+class ProjectUpdateRequest(BaseModel):
+    name: str
+    sql: str
+    dialect: str
+
+
+class ProjectSummaryResponse(BaseModel):
+    id: str
+    name: str
+    dialect: str
+    updated_at: datetime
+
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    sql: str
+    dialect: str
+    created_at: datetime
+    updated_at: datetime
